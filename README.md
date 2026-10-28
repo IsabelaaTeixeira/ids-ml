@@ -15,7 +15,8 @@ uv run pytest                # roda os testes
 uv run nids --help           # lista os comandos do projeto
 ```
 
-Para baixar e processar o dataset, veja [data/README.md](data/README.md).
+Para baixar e processar o dataset, veja [data/README.md](data/README.md). Para abrir os notebooks de
+análise em `notebooks/`, instale também o grupo de dependências deles: `uv sync --group notebooks`.
 
 ## Estrutura
 

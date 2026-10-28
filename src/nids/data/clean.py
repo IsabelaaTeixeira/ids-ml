@@ -82,6 +82,29 @@ def parse_timestamps(
     return df[~unparsed & ~wrong_date], details
 
 
+def clip_negative_times(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """ADR 0006: tempos negativos (de −14 a −1 µs, imprecisão do relógio da captura) viram 0."""
+    clipped = {c: int(n) for c in schema.TIME_FEATURES if (n := (df[c] < 0).sum())}
+    df = df.assign(**{c: df[c].clip(lower=0) for c in clipped})
+    return df, {"clipped": clipped}
+
+
+def fill_instant_rates(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """ADR 0006: fluxos de duração zero ficam, com as taxas por segundo iguais a 0.
+
+    É a convenção que o próprio CICFlowMeter já usa em fwd_packets_s e bwd_packets_s.
+    """
+    instant = df["flow_duration"] == 0
+    df = df.assign(**{c: df[c].mask(instant, 0) for c in schema.RATE_FEATURES})
+    return df, {"instant_flows": int(instant.sum())}
+
+
+def drop_header_overflow(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """ADR 0006: tamanho de cabeçalho negativo só pode ser overflow de inteiro; a linha sai."""
+    overflow = (df[schema.HEADER_FEATURES] < 0).any(axis=1)
+    return df[~overflow], {}
+
+
 def drop_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Troca ±inf por NaN e remove as linhas com algum valor faltando nas features."""
     infinite = {c: int(n) for c in schema.FEATURES if (n := np.isinf(df[c]).sum())}
@@ -159,6 +182,9 @@ def clean(raw: pd.DataFrame, first_capture_hour: int = 8) -> tuple[pd.DataFrame,
     df = report.run(normalize_labels, df)
     df = report.run(drop_columns, df)
     df = report.run(parse_timestamps, df, first_capture_hour=first_capture_hour)
+    df = report.run(clip_negative_times, df)
+    df = report.run(fill_instant_rates, df)
+    df = report.run(drop_header_overflow, df)
     df = report.run(drop_missing_values, df)
     df = report.run(drop_duplicates, df)
     df = report.run(report_constant_features, df)

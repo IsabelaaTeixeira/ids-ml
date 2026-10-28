@@ -22,6 +22,10 @@ def validate_clean(df: pd.DataFrame) -> None:
     not_finite = [c for c in schema.FEATURES if not np.isfinite(df[c].to_numpy()).all()]
     if not_finite:
         problems.append(f"features com NaN ou infinito: {not_finite}")
+    # O -1 das janelas TCP significa "não observada" (ADR 0006)
+    negative = [c for c in schema.FEATURES if df[c].min() < (-1 if "init_win" in c else 0)]
+    if negative:
+        problems.append(f"valores negativos: {negative}")
     if df[schema.TIMESTAMP].isna().any():
         problems.append("timestamps faltando")
     if df[schema.LABEL].isna().any():
