@@ -1,0 +1,6 @@
+# Finais de linha LF no repositório, mesmo editando no Windows
+* text=auto eol=lf
+
+*.parquet binary
+*.joblib binary
+*.png binary

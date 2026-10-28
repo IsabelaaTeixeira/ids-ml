@@ -1,0 +1,49 @@
+[project]
+name = "nids"
+version = "0.0.1"
+description = "Detecção de intrusão em fluxos de rede com Machine Learning (CIC-IDS2017)."
+readme = "README.md"
+authors = [
+    { name = "IsabelaaTeixeira", email = "isabela_teixeira@discente.ufg.br" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+nids = "nids.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "PT"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--import-mode=importlib"]
+markers = [
+    "data: precisa do dataset real em data/ (fica fora do CI)",
+]
+
+[tool.coverage.run]
+source = ["nids"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.3",
+]

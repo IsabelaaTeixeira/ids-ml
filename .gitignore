@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Dados e artefatos (baixados ou gerados; nunca vão para o git)
+data/*
+!data/README.md
+models/
+mlruns/
+mlflow.db
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Testes e ferramentas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Segredos e configuração local
+.env
