@@ -1,0 +1,192 @@
+{
+  "rows_raw": 3119345,
+  "rows_clean": 2496542,
+  "steps": [
+    {
+      "step": "drop_empty_rows",
+      "rows_before": 3119345,
+      "rows_after": 2830743,
+      "removed": 288602,
+      "details": {}
+    },
+    {
+      "step": "normalize_labels",
+      "rows_before": 2830743,
+      "rows_after": 2830743,
+      "removed": 0,
+      "details": {
+        "renamed": {
+          "Web Attack  Brute Force": "Web Attack - Brute Force",
+          "Web Attack  XSS": "Web Attack - XSS",
+          "Web Attack  Sql Injection": "Web Attack - Sql Injection"
+        }
+      }
+    },
+    {
+      "step": "drop_columns",
+      "rows_before": 2830743,
+      "rows_after": 2830743,
+      "removed": 0,
+      "details": {
+        "flow_id": {
+          "reason": "redundante: junta IPs, portas e protocolo",
+          "distinct_values": 1085071
+        },
+        "fwd_header_length_1": {
+          "reason": "cópia de fwd_header_length",
+          "distinct_values": 3768
+        },
+        "bwd_psh_flags": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "bwd_urg_flags": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "fwd_avg_bytes_bulk": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "fwd_avg_packets_bulk": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "fwd_avg_bulk_rate": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "bwd_avg_bytes_bulk": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "bwd_avg_packets_bulk": {
+          "reason": "constante",
+          "distinct_values": 1
+        },
+        "bwd_avg_bulk_rate": {
+          "reason": "constante",
+          "distinct_values": 1
+        }
+      }
+    },
+    {
+      "step": "parse_timestamps",
+      "rows_before": 2830743,
+      "rows_after": 2830743,
+      "removed": 0,
+      "details": {
+        "with_seconds": 529918,
+        "without_seconds": 2300825,
+        "shifted_12h": 1471716,
+        "unparsed": 0,
+        "wrong_date": 0
+      }
+    },
+    {
+      "step": "drop_missing_values",
+      "rows_before": 2830743,
+      "rows_after": 2827876,
+      "removed": 2867,
+      "details": {
+        "infinite": {
+          "flow_bytes_s": 1509,
+          "flow_packets_s": 2867
+        },
+        "missing": {
+          "flow_bytes_s": 2867,
+          "flow_packets_s": 2867
+        }
+      }
+    },
+    {
+      "step": "drop_duplicates",
+      "rows_before": 2827876,
+      "rows_after": 2496542,
+      "removed": 331334,
+      "details": {
+        "exact": 329898,
+        "exact_by_label": {
+          "BENIGN": 199068,
+          "PortScan": 68110,
+          "DoS Hulk": 57278,
+          "SSH-Patator": 2678,
+          "FTP-Patator": 2004,
+          "DoS slowloris": 422,
+          "DoS Slowhttptest": 271,
+          "Web Attack - Brute Force": 37,
+          "DoS GoldenEye": 11,
+          "DDoS": 11,
+          "Bot": 8
+        },
+        "conflicting": 1436,
+        "conflicting_by_label": {
+          "BENIGN": 718,
+          "PortScan": 564,
+          "DoS Hulk": 149,
+          "DDoS": 3,
+          "DoS slowloris": 2
+        }
+      }
+    },
+    {
+      "step": "report_constant_features",
+      "rows_before": 2496542,
+      "rows_after": 2496542,
+      "removed": 0,
+      "details": {
+        "constant_features": []
+      }
+    },
+    {
+      "step": "report_negative_values",
+      "rows_before": 2496542,
+      "rows_after": 2496542,
+      "removed": 0,
+      "details": {
+        "negative_values": {
+          "flow_duration": 107,
+          "flow_bytes_s": 78,
+          "flow_packets_s": 107,
+          "flow_iat_mean": 107,
+          "flow_iat_max": 107,
+          "flow_iat_min": 2880,
+          "fwd_iat_min": 17,
+          "fwd_header_length": 35,
+          "bwd_header_length": 22,
+          "init_win_bytes_forward": 892949,
+          "init_win_bytes_backward": 1193806,
+          "min_seg_size_forward": 35
+        }
+      }
+    }
+  ],
+  "labels": {
+    "BENIGN": 2071534,
+    "DoS Hulk": 172697,
+    "DDoS": 128011,
+    "PortScan": 90130,
+    "DoS GoldenEye": 10282,
+    "FTP-Patator": 5931,
+    "DoS slowloris": 5372,
+    "DoS Slowhttptest": 5228,
+    "SSH-Patator": 3219,
+    "Bot": 1948,
+    "Web Attack - Brute Force": 1470,
+    "Web Attack - XSS": 652,
+    "Infiltration": 36,
+    "Web Attack - Sql Injection": 21,
+    "Heartbleed": 11
+  },
+  "families": {
+    "BENIGN": 2071534,
+    "DoS": 193579,
+    "DDoS": 128011,
+    "PortScan": 90130,
+    "BruteForce": 9150,
+    "WebAttack": 2143,
+    "Bot": 1948,
+    "Infiltration": 36,
+    "Heartbleed": 11
+  }
+}

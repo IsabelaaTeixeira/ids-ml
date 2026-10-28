@@ -9,12 +9,13 @@ wheels/
 # Virtual environments
 .venv
 
-# Dados e artefatos (baixados ou gerados; nunca vão para o git)
-data/*
-!data/README.md
-models/
-mlruns/
-mlflow.db
+# Dados e artefatos (baixados ou gerados; nunca vão para o git).
+# A barra no início prende o padrão à raiz: src/nids/models/ continua versionado.
+/data/*
+!/data/README.md
+/models/
+/mlruns/
+/mlflow.db
 
 # Notebooks
 .ipynb_checkpoints/

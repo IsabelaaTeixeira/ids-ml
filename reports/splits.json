@@ -1,0 +1,94 @@
+{
+  "random": {
+    "train": {
+      "BENIGN": 1242920,
+      "BruteForce": 5490,
+      "DoS": 116147,
+      "Heartbleed": 7,
+      "WebAttack": 1286,
+      "Infiltration": 22,
+      "Bot": 1169,
+      "PortScan": 54078,
+      "DDoS": 76807
+    },
+    "val": {
+      "BENIGN": 414307,
+      "BruteForce": 1830,
+      "DoS": 38717,
+      "Heartbleed": 2,
+      "WebAttack": 429,
+      "Infiltration": 7,
+      "Bot": 389,
+      "PortScan": 18026,
+      "DDoS": 25602
+    },
+    "test": {
+      "BENIGN": 414307,
+      "BruteForce": 1830,
+      "DoS": 38715,
+      "Heartbleed": 2,
+      "WebAttack": 428,
+      "Infiltration": 7,
+      "Bot": 390,
+      "PortScan": 18026,
+      "DDoS": 25602
+    }
+  },
+  "temporal": {
+    "train": {
+      "BENIGN": 1242920,
+      "BruteForce": 5490,
+      "DoS": 116147,
+      "Heartbleed": 7,
+      "WebAttack": 1286,
+      "Infiltration": 22,
+      "Bot": 1169,
+      "PortScan": 54078,
+      "DDoS": 76807
+    },
+    "val": {
+      "BENIGN": 414307,
+      "BruteForce": 1830,
+      "DoS": 38717,
+      "Heartbleed": 2,
+      "WebAttack": 429,
+      "Infiltration": 7,
+      "Bot": 389,
+      "PortScan": 18026,
+      "DDoS": 25602
+    },
+    "test": {
+      "BENIGN": 414307,
+      "BruteForce": 1830,
+      "DoS": 38715,
+      "Heartbleed": 2,
+      "WebAttack": 428,
+      "Infiltration": 7,
+      "Bot": 390,
+      "PortScan": 18026,
+      "DDoS": 25602
+    }
+  },
+  "unseen": {
+    "train": {
+      "BENIGN": 1046328,
+      "BruteForce": 7320,
+      "DoS": 154864,
+      "Heartbleed": 9
+    },
+    "val": {
+      "BENIGN": 261582,
+      "BruteForce": 1830,
+      "DoS": 38715,
+      "Heartbleed": 2
+    },
+    "test": {
+      "BENIGN": 763624,
+      "WebAttack": 2143,
+      "Infiltration": 36,
+      "Bot": 1948,
+      "PortScan": 90130,
+      "DDoS": 128011
+    }
+  }
+}
