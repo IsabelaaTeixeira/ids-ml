@@ -98,10 +98,9 @@ Princípios que guiam todo o resto:
 │   ├── ARQUITETURA.md
 │   └── decisions/             # ADRs
 ├── notebooks/                 # exploração e apresentação; importam de src/
-│   ├── 01_eda.ipynb
-│   ├── 02_qualidade_dados.ipynb
-│   ├── 03_supervisionado.ipynb
-│   └── 04_anomalia.ipynb
+│   ├── 01_eda.ipynb           # análise exploratória e qualidade dos dados
+│   ├── 02_supervisionado.ipynb
+│   └── 03_anomalia.ipynb
 ├── src/nids/
 │   ├── cli.py                 # nids data verify|clean|split, train, evaluate, serve, replay
 │   ├── config.py              # YAML -> objetos validados (Pydantic)
@@ -376,7 +375,8 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | Grupo | Pacotes | Onde |
 |---|---|---|
 | base | numpy, pandas, pyarrow, scikit-learn, xgboost, pydantic, pyyaml, typer | Tudo |
-| train | torch (CPU), mlflow, shap, matplotlib, jupyter | Máquina de desenvolvimento |
+| train | torch (CPU), mlflow, shap | Máquina de desenvolvimento |
+| notebooks | ipykernel, matplotlib, nbclient, nbformat | Notebooks de análise |
 | api | fastapi, uvicorn, pydantic-settings | Imagem da API |
 | dashboard | streamlit, httpx | Imagem do dashboard |
 | dev | pytest, pytest-cov, httpx, ruff, pre-commit | Desenvolvimento e CI |
