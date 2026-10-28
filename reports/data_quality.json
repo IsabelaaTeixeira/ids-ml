@@ -1,6 +1,6 @@
 {
   "rows_raw": 3119345,
-  "rows_clean": 2496542,
+  "rows_clean": 2498034,
   "steps": [
     {
       "step": "drop_empty_rows",
@@ -67,6 +67,46 @@
         "bwd_avg_bulk_rate": {
           "reason": "constante",
           "distinct_values": 1
+        },
+        "subflow_fwd_packets": {
+          "reason": "cópia de total_fwd_packets",
+          "distinct_values": 1432
+        },
+        "subflow_bwd_packets": {
+          "reason": "cópia de total_backward_packets",
+          "distinct_values": 1747
+        },
+        "subflow_fwd_bytes": {
+          "reason": "cópia de total_length_of_fwd_packets",
+          "distinct_values": 17928
+        },
+        "subflow_bwd_bytes": {
+          "reason": "cópia de total_length_of_bwd_packets",
+          "distinct_values": 64737
+        },
+        "avg_fwd_segment_size": {
+          "reason": "cópia de fwd_packet_length_mean",
+          "distinct_values": 85557
+        },
+        "avg_bwd_segment_size": {
+          "reason": "cópia de bwd_packet_length_mean",
+          "distinct_values": 133411
+        },
+        "syn_flag_count": {
+          "reason": "cópia de fwd_psh_flags",
+          "distinct_values": 2
+        },
+        "cwe_flag_count": {
+          "reason": "cópia de fwd_urg_flags",
+          "distinct_values": 2
+        },
+        "ece_flag_count": {
+          "reason": "cópia de rst_flag_count",
+          "distinct_values": 2
+        },
+        "packet_length_variance": {
+          "reason": "quadrado de packet_length_std",
+          "distinct_values": 395922
         }
       }
     },
@@ -84,55 +124,80 @@
       }
     },
     {
-      "step": "drop_missing_values",
+      "step": "clip_negative_times",
       "rows_before": 2830743,
-      "rows_after": 2827876,
-      "removed": 2867,
+      "rows_after": 2830743,
+      "removed": 0,
       "details": {
-        "infinite": {
-          "flow_bytes_s": 1509,
-          "flow_packets_s": 2867
-        },
-        "missing": {
-          "flow_bytes_s": 2867,
-          "flow_packets_s": 2867
+        "clipped": {
+          "flow_duration": 115,
+          "flow_iat_mean": 115,
+          "flow_iat_max": 115,
+          "flow_iat_min": 2891,
+          "fwd_iat_min": 17
         }
       }
     },
     {
-      "step": "drop_duplicates",
-      "rows_before": 2827876,
-      "rows_after": 2496542,
-      "removed": 331334,
+      "step": "fill_instant_rates",
+      "rows_before": 2830743,
+      "rows_after": 2830743,
+      "removed": 0,
       "details": {
-        "exact": 329898,
+        "instant_flows": 2982
+      }
+    },
+    {
+      "step": "drop_header_overflow",
+      "rows_before": 2830743,
+      "rows_after": 2830708,
+      "removed": 35,
+      "details": {}
+    },
+    {
+      "step": "drop_missing_values",
+      "rows_before": 2830708,
+      "rows_after": 2830708,
+      "removed": 0,
+      "details": {
+        "infinite": {},
+        "missing": {}
+      }
+    },
+    {
+      "step": "drop_duplicates",
+      "rows_before": 2830708,
+      "rows_after": 2498034,
+      "removed": 332674,
+      "details": {
+        "exact": 331234,
         "exact_by_label": {
-          "BENIGN": 199068,
-          "PortScan": 68110,
-          "DoS Hulk": 57278,
+          "BENIGN": 199451,
+          "PortScan": 68111,
+          "DoS Hulk": 58224,
           "SSH-Patator": 2678,
-          "FTP-Patator": 2004,
+          "FTP-Patator": 2005,
           "DoS slowloris": 422,
           "DoS Slowhttptest": 271,
           "Web Attack - Brute Force": 37,
+          "Bot": 13,
           "DoS GoldenEye": 11,
-          "DDoS": 11,
-          "Bot": 8
+          "DDoS": 11
         },
-        "conflicting": 1436,
+        "conflicting": 1440,
         "conflicting_by_label": {
-          "BENIGN": 718,
+          "BENIGN": 720,
           "PortScan": 564,
-          "DoS Hulk": 149,
-          "DDoS": 3,
+          "DoS Hulk": 150,
+          "DDoS": 4,
           "DoS slowloris": 2
         }
       }
     },
     {
       "step": "report_constant_features",
-      "rows_before": 2496542,
-      "rows_after": 2496542,
+      "rows_before": 2498034,
+      "rows_after": 2498034,
       "removed": 0,
       "details": {
         "constant_features": []
@@ -140,38 +205,28 @@
     },
     {
       "step": "report_negative_values",
-      "rows_before": 2496542,
-      "rows_after": 2496542,
+      "rows_before": 2498034,
+      "rows_after": 2498034,
       "removed": 0,
       "details": {
         "negative_values": {
-          "flow_duration": 107,
-          "flow_bytes_s": 78,
-          "flow_packets_s": 107,
-          "flow_iat_mean": 107,
-          "flow_iat_max": 107,
-          "flow_iat_min": 2880,
-          "fwd_iat_min": 17,
-          "fwd_header_length": 35,
-          "bwd_header_length": 22,
-          "init_win_bytes_forward": 892949,
-          "init_win_bytes_backward": 1193806,
-          "min_seg_size_forward": 35
+          "init_win_bytes_forward": 892929,
+          "init_win_bytes_backward": 1194484
         }
       }
     }
   ],
   "labels": {
-    "BENIGN": 2071534,
-    "DoS Hulk": 172697,
-    "DDoS": 128011,
-    "PortScan": 90130,
+    "BENIGN": 2072891,
+    "DoS Hulk": 172699,
+    "DDoS": 128012,
+    "PortScan": 90255,
     "DoS GoldenEye": 10282,
-    "FTP-Patator": 5931,
+    "FTP-Patator": 5933,
     "DoS slowloris": 5372,
     "DoS Slowhttptest": 5228,
     "SSH-Patator": 3219,
-    "Bot": 1948,
+    "Bot": 1953,
     "Web Attack - Brute Force": 1470,
     "Web Attack - XSS": 652,
     "Infiltration": 36,
@@ -179,13 +234,13 @@
     "Heartbleed": 11
   },
   "families": {
-    "BENIGN": 2071534,
-    "DoS": 193579,
-    "DDoS": 128011,
-    "PortScan": 90130,
-    "BruteForce": 9150,
+    "BENIGN": 2072891,
+    "DoS": 193581,
+    "DDoS": 128012,
+    "PortScan": 90255,
+    "BruteForce": 9152,
     "WebAttack": 2143,
-    "Bot": 1948,
+    "Bot": 1953,
     "Infiltration": 36,
     "Heartbleed": 11
   }

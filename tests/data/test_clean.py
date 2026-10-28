@@ -5,10 +5,13 @@ import pytest
 from nids import schema
 from nids.data.clean import (
     clean,
+    clip_negative_times,
     drop_columns,
     drop_duplicates,
     drop_empty_rows,
+    drop_header_overflow,
     drop_missing_values,
+    fill_instant_rates,
     normalize_labels,
     parse_timestamps,
 )
@@ -78,6 +81,33 @@ def test_remove_timestamp_invalido_ou_de_outro_dia(raw_frame):
     assert details["unparsed"] == 1
 
 
+def test_tempos_negativos_viram_zero(raw_frame):
+    df, details = clip_negative_times(raw_frame({"flow_iat_min": -1.0}, {"flow_duration": -13.0}))
+
+    assert df["flow_iat_min"].iloc[0] == 0
+    assert df["flow_duration"].iloc[1] == 0
+    assert details["clipped"] == {"flow_duration": 1, "flow_iat_min": 1}
+
+
+def test_fluxo_de_duracao_zero_fica_com_taxas_zeradas(raw_frame):
+    raw = raw_frame(
+        {"flow_duration": 0.0, "flow_bytes_s": np.nan, "flow_packets_s": np.inf},
+        {"flow_duration": 5.0, "flow_bytes_s": 10.0},
+    )
+
+    df, details = fill_instant_rates(raw)
+
+    assert df.loc[0, schema.RATE_FEATURES].tolist() == [0, 0, 0, 0]
+    assert df.loc[1, "flow_bytes_s"] == 10
+    assert details["instant_flows"] == 1
+
+
+def test_remove_cabecalho_com_overflow(raw_frame):
+    df, _ = drop_header_overflow(raw_frame({}, {"fwd_header_length": -32212234240.0}))
+
+    assert df[schema.ROW_ID].tolist() == [0]
+
+
 def test_remove_infinitos_e_nulos(raw_frame):
     raw = raw_frame(
         {}, {"flow_bytes_s": np.inf}, {"flow_packets_s": -np.inf}, {"flow_iat_mean": np.nan}
@@ -119,21 +149,29 @@ def test_duplicatas_conflitantes_saem_todas(raw_frame):
 
 def test_clean_completo_passa_na_validacao(raw_frame):
     raw = raw_frame(
-        {},
+        {},  # duração zero (flow_duration = índice da linha): fica, com taxas 0
         {"label": "DDoS"},
         {"label": None},  # linha vazia
-        {"flow_bytes_s": np.inf},
+        {"flow_bytes_s": np.inf},  # infinito com duração maior que zero
         {"flow_duration": 0.0},  # duplicata da primeira linha
         {"label": "Web Attack \x96 XSS", "timestamp": "3/7/2017 2:10"},
+        {"label": "Heartbleed", "flow_iat_min": -1.0},  # tempo negativo: vira 0 e fica
+        {"fwd_header_length": -1e9},  # overflow
     )
 
     df, report = clean(raw)
 
     validate_clean(df)
-    assert report["rows_raw"] == 6
-    assert report["rows_clean"] == 3
-    assert report["families"] == {"BENIGN": 1, "DDoS": 1, "WebAttack": 1}
-    assert [s["removed"] for s in report["steps"]] == [1, 0, 0, 0, 1, 1, 0, 0]
+    assert report["rows_raw"] == 8
+    assert report["rows_clean"] == 4
+    assert report["families"] == {"BENIGN": 1, "DDoS": 1, "WebAttack": 1, "Heartbleed": 1}
+    removed = {s["step"]: s["removed"] for s in report["steps"] if s["removed"]}
+    assert removed == {
+        "drop_empty_rows": 1,
+        "drop_header_overflow": 1,
+        "drop_missing_values": 1,
+        "drop_duplicates": 1,
+    }
 
 
 def test_validacao_acusa_infinito(make_flows):
@@ -141,6 +179,16 @@ def test_validacao_acusa_infinito(make_flows):
     df.loc[0, "flow_bytes_s"] = np.inf
 
     with pytest.raises(DataValidationError, match="flow_bytes_s"):
+        validate_clean(df)
+
+
+def test_validacao_acusa_negativo_fora_das_janelas_tcp(make_flows):
+    df = make_flows({("monday", "BENIGN"): 5})
+    df.loc[0, "init_win_bytes_forward"] = -1.0  # "janela não observada" é permitido
+    validate_clean(df)
+
+    df.loc[0, "flow_iat_min"] = -1.0
+    with pytest.raises(DataValidationError, match="negativos"):
         validate_clean(df)
 
 

@@ -131,9 +131,29 @@ DROPPED = {
     "bwd_avg_bytes_bulk": "constante",
     "bwd_avg_packets_bulk": "constante",
     "bwd_avg_bulk_rate": "constante",
+    # ADR 0005: cópias de outras colunas
+    "subflow_fwd_packets": "cópia de total_fwd_packets",
+    "subflow_bwd_packets": "cópia de total_backward_packets",
+    "subflow_fwd_bytes": "cópia de total_length_of_fwd_packets",
+    "subflow_bwd_bytes": "cópia de total_length_of_bwd_packets",
+    "avg_fwd_segment_size": "cópia de fwd_packet_length_mean",
+    "avg_bwd_segment_size": "cópia de bwd_packet_length_mean",
+    "syn_flag_count": "cópia de fwd_psh_flags",
+    "cwe_flag_count": "cópia de fwd_urg_flags",
+    "ece_flag_count": "cópia de rst_flag_count",
+    "packet_length_variance": "quadrado de packet_length_std",
 }
 
 FEATURES = [c for c in RAW_COLUMNS if c not in DROPPED and c not in METADATA and c != LABEL]
+
+# Grupos tratados na limpeza (ADR 0006)
+TIME_FEATURES = [
+    c
+    for c in FEATURES
+    if c == "flow_duration" or "_iat_" in c or c.startswith(("active_", "idle_"))
+]
+RATE_FEATURES = ["flow_bytes_s", "flow_packets_s", "fwd_packets_s", "bwd_packets_s"]
+HEADER_FEATURES = ["fwd_header_length", "bwd_header_length", "min_seg_size_forward"]
 
 # Colunas do dataset limpo (data/interim/flows.parquet), nesta ordem.
 CLEAN_COLUMNS = [*METADATA, *FEATURES, LABEL, FAMILY]
