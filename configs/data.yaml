@@ -1,0 +1,25 @@
+# Configuração do pipeline de dados (nids data verify | clean | split).
+# Caminhos relativos à raiz do projeto.
+
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  reports: reports
+  # Gerado por `nids data verify --record` e versionado no git
+  checksums: configs/raw_files.sha256
+
+timestamp:
+  # Todos os arquivos usam relógio de 12h sem AM/PM (as horas vão de 8 a 12 e depois
+  # de 1 a 5). A captura começa às 8h, então horas antes disso são da tarde e ganham 12h.
+  first_capture_hour: 8
+
+split:
+  seed: 42
+  # Treino, validação e teste nos protocolos P0 (random) e P1 (temporal)
+  fractions: [0.6, 0.2, 0.2]
+  # P2: ataques de quinta e sexta nunca aparecem no treino
+  unseen:
+    train_days: [monday, tuesday, wednesday]
+    test_days: [thursday, friday]
+    val_fraction: 0.2

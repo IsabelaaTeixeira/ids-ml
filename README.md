@@ -2,7 +2,7 @@
 
 Detecção de intrusão em fluxos de rede com o dataset CIC-IDS2017. O projeto compara um classificador supervisionado, bom em ataques conhecidos, com detectores de anomalia, que tentam pegar ataques nunca vistos, e empacota o resultado como uma API em Docker.
 
-> Em construção. Etapa atual: 0, fundação. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+> Em construção. Etapa atual: 1, dados. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## Como rodar
 
@@ -14,6 +14,8 @@ uv run pre-commit install    # ativa as checagens antes de cada commit
 uv run pytest                # roda os testes
 uv run nids --help           # lista os comandos do projeto
 ```
+
+Para baixar e processar o dataset, veja [data/README.md](data/README.md).
 
 ## Estrutura
 

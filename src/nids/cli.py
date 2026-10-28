@@ -1,21 +1,91 @@
 """Linha de comando do projeto. Use `uv run nids --help` para ver os comandos."""
 
+import logging
+from pathlib import Path
+from typing import Annotated
+
 import typer
 
 from nids import __version__
+from nids.config import load_data_config
+from nids.data.pipeline import run_clean, run_split
+from nids.data.verify import record_checksums, verify_raw
 
 app = typer.Typer(
     help="IDS com Machine Learning: dados, treino, avaliação e serviço.",
     no_args_is_help=True,
 )
+data_app = typer.Typer(
+    help="Pipeline de dados: conferir, limpar e dividir o CIC-IDS2017.",
+    no_args_is_help=True,
+)
+app.add_typer(data_app, name="data")
+
+DataConfigOption = Annotated[
+    Path, typer.Option("--config", help="Arquivo de configuração dos dados.")
+]
+DEFAULT_DATA_CONFIG = Path("configs/data.yaml")
 
 
 @app.callback()
 def main() -> None:
     """IDS com Machine Learning."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 @app.command()
 def version() -> None:
     """Mostra a versão do pacote."""
     typer.echo(__version__)
+
+
+@data_app.command("verify")
+def data_verify(
+    config: DataConfigOption = DEFAULT_DATA_CONFIG,
+    record: Annotated[
+        bool,
+        typer.Option("--record", help="Grava os checksums dos CSVs atuais em vez de conferir."),
+    ] = False,
+) -> None:
+    """Confere se os CSVs brutos existem e batem com os checksums registrados."""
+    cfg = load_data_config(config)
+    if record:
+        sums = record_checksums(cfg.paths.raw, cfg.paths.checksums)
+        typer.echo(f"{len(sums)} checksums gravados em {cfg.paths.checksums}")
+        return
+    if not cfg.paths.checksums.exists():
+        typer.echo(
+            f"{cfg.paths.checksums} não existe. Rode `nids data verify --record` "
+            "depois de baixar os CSVs.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    problems = verify_raw(cfg.paths.raw, cfg.paths.checksums)
+    for problem in problems:
+        typer.echo(problem, err=True)
+    if problems:
+        raise typer.Exit(1)
+    typer.echo("Arquivos brutos conferidos: tudo certo.")
+
+
+@data_app.command("clean")
+def data_clean(config: DataConfigOption = DEFAULT_DATA_CONFIG) -> None:
+    """Limpa os CSVs brutos e grava o dataset limpo e o relatório de qualidade."""
+    cfg = load_data_config(config)
+    report = run_clean(cfg)
+    typer.echo(f"{report['rows_raw']} linhas brutas -> {report['rows_clean']} linhas limpas")
+    for step in report["steps"]:
+        if step["removed"]:
+            typer.echo(f"  {step['step']}: -{step['removed']}")
+    typer.echo(f"Relatório em {cfg.paths.reports / 'data_quality.json'}")
+
+
+@data_app.command("split")
+def data_split(config: DataConfigOption = DEFAULT_DATA_CONFIG) -> None:
+    """Divide o dataset limpo nos protocolos random, temporal e unseen."""
+    cfg = load_data_config(config)
+    summary = run_split(cfg)
+    for protocol, parts in summary.items():
+        sizes = ", ".join(f"{name} {sum(counts.values())}" for name, counts in parts.items())
+        typer.echo(f"{protocol}: {sizes}")
+    typer.echo(f"Resumo em {cfg.paths.reports / 'splits.json'}")

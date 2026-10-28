@@ -81,7 +81,8 @@ Princípios que guiam todo o resto:
 │   ├── api.Dockerfile
 │   └── dashboard.Dockerfile
 ├── configs/
-│   ├── data.yaml              # arquivos brutos esperados + checksums, colunas descartadas, mapa de famílias
+│   ├── data.yaml              # caminhos, correção do horário, parâmetros dos splits
+│   ├── raw_files.sha256       # checksums dos CSVs brutos (nids data verify --record)
 │   └── experiments/           # um YAML por experimento
 │       ├── xgb_temporal.yaml
 │       └── iforest_unseen.yaml
@@ -106,10 +107,12 @@ Princípios que guiam todo o resto:
 │   ├── config.py              # YAML -> objetos validados (Pydantic)
 │   ├── schema.py              # FONTE ÚNICA: nomes das features, rótulos, famílias
 │   ├── data/
+│   │   ├── verify.py          # confere os CSVs brutos contra os checksums
 │   │   ├── load.py            # leitura dos CSVs com tipos corretos
 │   │   ├── clean.py           # regras de limpeza (seção 5.3)
 │   │   ├── validate.py        # invariantes checadas ao fim da limpeza
-│   │   └── split.py           # protocolos P0, P1, P2
+│   │   ├── split.py           # protocolos P0, P1, P2
+│   │   └── pipeline.py        # liga as etapas às pastas do config
 │   ├── features/
 │   │   └── preprocess.py      # pipelines scikit-learn por tipo de modelo
 │   ├── models/
@@ -142,7 +145,7 @@ Princípios que guiam todo o resto:
 
 | Camada | Conteúdo | Quem escreve | No git? |
 |---|---|---|---|
-| `data/raw/` | CSVs originais, imutáveis | Você, por download manual (o CIC pede formulário) | Não. Os checksums ficam em `configs/data.yaml` |
+| `data/raw/` | CSVs originais, imutáveis | Você, por download manual (o CIC pede formulário) | Não. Os checksums ficam em `configs/raw_files.sha256` |
 | `data/interim/` | `flows.parquet` limpo, todas as linhas | `nids data clean` | Não |
 | `data/processed/<protocolo>/` | `train`, `val`, `test` em parquet | `nids data split` | Não |
 
@@ -166,14 +169,14 @@ Cada regra é uma função pequena e testada, e cada uma registra quantas linhas
 6. **Duplicatas exatas:** remover **antes** do split, senão a mesma linha cai no treino e no teste. Contar também duplicatas conflitantes (mesmas features, rótulos diferentes).
 7. **Colunas constantes:** remover (ex.: as colunas de *Bulk* são sempre zero).
 8. **Negativos sem sentido:** `-1` nas janelas TCP iniciais significa "não observado". Decidir o tratamento e documentar.
-9. **Timestamp:** conferir o formato em cada arquivo, porque há relatos de formatos diferentes entre arquivos e de horário em 12h sem AM/PM.
+9. **Timestamp:** os arquivos misturam `dd/mm/aaaa hh:mm:ss` e `d/m/aaaa h:mm`, e **todos** usam relógio de 12h sem AM/PM (as horas vão de 8 a 12 e depois de 1 a 5). Horas antes das 8h ganham 12h, e a data de cada linha é conferida contra o dia do arquivo.
 10. **Tipos:** converter para float32.
 
 Ao final, `validate.py` checa invariantes (nenhum NaN/inf, nenhuma duplicata, colunas e rótulos esperados). Se algo falhar, o pipeline para em vez de gerar dados quebrados em silêncio.
 
 ### 5.4 Colunas que não são features
 
-`Flow ID`, `Source IP`, `Source Port`, `Destination IP` e `Timestamp` ficam no parquet como **metadados** (usados no split e no replay) e nunca entram no modelo. Os ataques do CIC-IDS2017 partem de poucos IPs fixos, então o modelo aprenderia o endereço e não o ataque.
+`Source IP`, `Source Port`, `Destination IP` e `Timestamp` ficam no parquet como **metadados** (usados no split e no replay) e nunca entram no modelo. Os ataques do CIC-IDS2017 partem de poucos IPs fixos, então o modelo aprenderia o endereço e não o ataque. `Flow ID` sai na limpeza, por ser só a junção de IPs, portas e protocolo. `Protocol` é feature.
 
 `Destination Port` é zona cinzenta, já que os ataques Patator usam sempre as portas 21 e 22. Fica fora por padrão, controlado por uma flag. Testar com e sem a porta é um experimento que vale a pena mostrar.
 
