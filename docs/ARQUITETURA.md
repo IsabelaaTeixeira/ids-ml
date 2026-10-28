@@ -1,6 +1,6 @@
 # Arquitetura do projeto: IDS com Machine Learning
 
-> Status: proposta (28/10/2026). Documento vivo. Decisões grandes viram ADRs em `docs/decisions/`.
+> Status: proposta (28/10/2026). Documento vivo. Decisões grandes viram ADRs em `docs/adr/`.
 
 ## 1. Objetivo
 
@@ -96,7 +96,7 @@ Princípios que guiam todo o resto:
 │   └── figures/
 ├── docs/
 │   ├── ARQUITETURA.md
-│   └── decisions/             # ADRs
+│   └── adr/                   # ADRs
 ├── notebooks/                 # exploração e apresentação; importam de src/
 │   ├── 01_eda.ipynb           # análise exploratória e qualidade dos dados
 │   ├── 02_supervisionado.ipynb
@@ -162,16 +162,16 @@ Cada regra é uma função pequena e testada, e cada uma registra quantas linhas
 
 1. **Nomes de colunas:** remover espaços no início e converter para snake_case, mapeando via `schema.py`.
 2. **Coluna duplicada:** `Fwd Header Length` aparece duas vezes. Remover a cópia.
-3. **Infinitos e nulos:** `inf` vira NaN (aparece em `Flow Bytes/s` e `Flow Packets/s`). Remover as linhas com NaN e registrar quantas.
+3. **Infinitos e nulos:** só aparecem nas taxas dos fluxos de duração zero, que ficam no conjunto com taxa 0 ([ADR 0006](adr/0006-negativos-e-duracao-zero.md)). Qualquer outro `inf` ou NaN remove a linha.
 4. **Linhas vazias:** alguns arquivos têm muitas linhas totalmente vazias.
 5. **Rótulos:** corrigir o encoding (ex.: `Web Attack � Brute Force`) e mapear para famílias (5.5).
 6. **Duplicatas exatas:** remover **antes** do split, senão a mesma linha cai no treino e no teste. Contar também duplicatas conflitantes (mesmas features, rótulos diferentes).
-7. **Colunas constantes:** remover (ex.: as colunas de *Bulk* são sempre zero).
-8. **Negativos sem sentido:** `-1` nas janelas TCP iniciais significa "não observado". Decidir o tratamento e documentar.
+7. **Colunas constantes e redundantes:** remover as 8 constantes (ex.: as de *Bulk*, sempre zero) e 10 cópias de outras colunas ([ADR 0005](adr/0005-atributos-redundantes.md)). Ficam 60 atributos.
+8. **Negativos:** tempos de −14 a −1 µs viram 0; tamanhos de cabeçalho negativos (*overflow*) removem a linha ([ADR 0006](adr/0006-negativos-e-duracao-zero.md)). O `-1` nas janelas TCP iniciais significa "não observada" e fica.
 9. **Timestamp:** os arquivos misturam `dd/mm/aaaa hh:mm:ss` e `d/m/aaaa h:mm`, e **todos** usam relógio de 12h sem AM/PM (as horas vão de 8 a 12 e depois de 1 a 5). Horas antes das 8h ganham 12h, e a data de cada linha é conferida contra o dia do arquivo.
 10. **Tipos:** converter para float32.
 
-Ao final, `validate.py` checa invariantes (nenhum NaN/inf, nenhuma duplicata, colunas e rótulos esperados). Se algo falhar, o pipeline para em vez de gerar dados quebrados em silêncio.
+Ao final, `validate.py` checa invariantes (nenhum NaN/inf, nenhum negativo fora das janelas TCP, nenhuma duplicata, colunas e rótulos esperados). Se algo falhar, o pipeline para em vez de gerar dados quebrados em silêncio.
 
 ### 5.4 Colunas que não são features
 
@@ -193,7 +193,7 @@ Ao final, `validate.py` checa invariantes (nenhum NaN/inf, nenhuma duplicata, co
 | Infiltration | Infiltration |
 | Heartbleed | Heartbleed |
 
-Heartbleed e Infiltration têm só dezenas de amostras. Proposta: ficam fora do multiclasse do P1 e aparecem apenas como "ataque" nas avaliações binárias, sempre informando o N. A decisão fica registrada num ADR.
+Heartbleed e Infiltration têm só dezenas de amostras: ficam fora do multiclasse do P0 e do P1 e aparecem apenas como "ataque" nas avaliações binárias, sempre informando o N ([ADR 0003](adr/0003-familias-e-classes-raras.md)).
 
 ## 6. Protocolos de avaliação
 
@@ -404,12 +404,13 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 - `main` sempre verde. Uma branch por etapa (`feat/limpeza-dados`), merge por PR mesmo trabalhando sozinho. O histórico de PRs vira documentação.
 - Commits no padrão Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`).
 - Uma tag por etapa concluída: `v0.1.0` dados, `v0.2.0` baseline, e assim por diante.
-- ADRs curtos em `docs/decisions/` (contexto, decisão, consequências; meia página cada). Primeiros:
-  - 0001: dataset e versão (original vs. corrigida)
-  - 0002: protocolos de split
-  - 0003: famílias de rótulos e classes raras
-  - 0004: `Destination Port` como feature
-  - 0005: formato do artefato do modelo
+- ADRs curtos em `docs/adr/`: título, um parágrafo com contexto, decisão e porquê, e só quando ajudam, opções consideradas e consequências. Os da etapa 1:
+  - [0001](adr/0001-versao-do-conjunto.md): versão original do conjunto e rótulos como publicados
+  - [0002](adr/0002-protocolos-de-divisao.md): protocolos de divisão P0, P1 e P2
+  - [0003](adr/0003-familias-e-classes-raras.md): famílias de rótulos e classes raras
+  - [0004](adr/0004-porta-de-destino.md): porta de destino fora do modelo por padrão
+  - [0005](adr/0005-atributos-redundantes.md): atributos redundantes
+  - [0006](adr/0006-negativos-e-duracao-zero.md): valores negativos e fluxos de duração zero
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto
@@ -417,7 +418,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | # | Etapa | Duração | Pronto quando |
 |---|---|---|---|
 | 0 | Fundação | 1 a 2 dias | Estrutura criada; `uv run pytest` passa; CI verde no GitHub; pre-commit ativo |
-| 1 | Dados | 3 a 5 dias | `nids data clean` e `nids data split` recriam tudo a partir de `raw`; `data_quality.json` e notebook de EDA; testes de clean e split; ADRs 0001 a 0004 |
+| 1 | Dados | 3 a 5 dias | `nids data clean` e `nids data split` recriam tudo a partir de `raw`; `data_quality.json` e notebook de EDA; testes de clean e split; ADRs 0001 a 0006 |
 | 2 | Supervisionado | 3 a 5 dias | XGB e RF em P0 e P1 registrados no MLflow; artefato com metadata; tabela P0 vs. P1; SHAP como checagem de atalhos |
 | 3 | Anomalia | cerca de 5 dias | IF e AE no P2 com limiar por FPR; tabela-alvo da seção 8 preenchida; texto de discussão |
 | 4 | Serviço | 3 a 5 dias | `docker compose up` sobe a API; `/predict` responde a um fluxo real do teste; testes de API e `docker build` no CI |

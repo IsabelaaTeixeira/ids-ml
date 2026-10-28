@@ -1,21 +1,11 @@
-# NNNN. Título da decisão
+---
+status: proposta | aceita | substituída por ADR-NNNN
+data: AAAA-MM-DD
+---
 
-- Status: proposta | aceita | substituída por NNNN
-- Data: AAAA-MM-DD
+# Título curto da decisão
 
-## Contexto
+Uma a três frases: o contexto, o que foi decidido e por quê.
 
-Qual problema ou dúvida motivou a decisão? Quais restrições existem?
-
-## Decisão
-
-O que foi decidido, em uma ou duas frases.
-
-## Alternativas consideradas
-
-- Alternativa A: por que não foi escolhida.
-- Alternativa B: por que não foi escolhida.
-
-## Consequências
-
-O que fica mais fácil, o que fica mais difícil e o que precisa ser feito por causa desta decisão.
+Seções opcionais, só quando ajudam: **Opções consideradas** (alternativas cuja rejeição não é
+óbvia) e **Consequências** (efeitos que alguém lendo o código não perceberia).
