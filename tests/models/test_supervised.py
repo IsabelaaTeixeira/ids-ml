@@ -21,6 +21,16 @@ def test_modelo_nao_ve_porta_metadados_nem_classes_raras(tmp_path, make_flows):
     assert len(X) == len(y) == 10
 
 
+def test_experimento_pode_excluir_atributos(tmp_path, make_flows):
+    make_flows(GROUPS).to_parquet(tmp_path / "train.parquet", index=False)
+    excluded = ["init_win_bytes_forward", "init_win_bytes_backward", "min_seg_size_forward"]
+
+    X, _ = load_xy(tmp_path, "train", exclude=excluded)
+
+    assert len(X.columns) == 56  # 59 menos os três excluídos
+    assert not set(excluded) & set(X.columns)
+
+
 def test_experimento_com_a_porta_inclui_a_coluna(tmp_path, make_flows):
     make_flows(GROUPS).to_parquet(tmp_path / "train.parquet", index=False)
 

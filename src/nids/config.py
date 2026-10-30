@@ -6,7 +6,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PositiveFloat, field_validator, model_validator
 
-from nids.schema import Day
+from nids.schema import FEATURES, Day
 
 
 class _Config(BaseModel):
@@ -66,7 +66,16 @@ class ExperimentConfig(_Config):
     model: Literal["xgboost", "random_forest"]
     params: dict[str, Any] = Field(default_factory=dict)
     use_destination_port: bool = False  # ADR 0004
+    exclude_features: list[str] = Field(default_factory=list)
     seed: int = 42
+
+    @field_validator("exclude_features")
+    @classmethod
+    def _known_features(cls, names: list[str]) -> list[str]:
+        unknown = sorted(set(names) - set(FEATURES))
+        if unknown:
+            raise ValueError(f"atributos desconhecidos: {unknown}")
+        return names
 
 
 def load_data_config(path: Path) -> DataConfig:
