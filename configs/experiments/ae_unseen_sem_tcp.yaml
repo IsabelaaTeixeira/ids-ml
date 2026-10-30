@@ -1,0 +1,14 @@
+# ae_unseen sem os atributos que dependem do sistema operacional da máquina (hipótese do atalho)
+name: ae_unseen_sem_tcp
+protocol: unseen
+model: autoencoder
+params:
+  hidden_layer_sizes: [32, 16, 32]
+  batch_size: 1024
+  max_iter: 100
+  early_stopping: true
+  n_iter_no_change: 5
+exclude_features:
+  - init_win_bytes_forward
+  - init_win_bytes_backward
+  - min_seg_size_forward

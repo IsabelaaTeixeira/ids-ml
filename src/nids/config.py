@@ -59,14 +59,16 @@ class DataConfig(_Config):
 
 
 class ExperimentConfig(_Config):
-    """Um treino supervisionado (configs/experiments/*.yaml)."""
+    """Um treino (configs/experiments/*.yaml): classificador ou detector de anomalia."""
 
     name: str
     protocol: Literal["random", "temporal", "unseen"]
-    model: Literal["xgboost", "random_forest"]
+    model: Literal["xgboost", "random_forest", "isolation_forest", "autoencoder"]
     params: dict[str, Any] = Field(default_factory=dict)
     use_destination_port: bool = False  # ADR 0004
     exclude_features: list[str] = Field(default_factory=list)
+    # FPR escolhida nos fluxos normais da validação para fixar o limiar de alarme
+    target_fpr: float = Field(default=0.01, gt=0, lt=1)
     seed: int = 42
 
     @field_validator("exclude_features")

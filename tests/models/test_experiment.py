@@ -1,5 +1,5 @@
 from nids import schema
-from nids.models.supervised import load_xy
+from nids.models.experiment import load_xy
 
 GROUPS = {
     ("tuesday", "BENIGN"): 5,

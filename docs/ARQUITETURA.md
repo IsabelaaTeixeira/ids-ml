@@ -57,8 +57,8 @@ Princípios que guiam todo o resto:
 | Divisão treino/teste | Três protocolos (seção 6) | O split aleatório só aparece como contraexemplo |
 | Rótulos | Famílias de ataque | Várias classes originais têm só dezenas de amostras |
 | Supervisionado | XGBoost (principal) e Random Forest (comparação) | Fortes em dados tabulares e com explicação via SHAP |
-| Anomalia | Isolation Forest e Autoencoder (PyTorch) | Um clássico leve e um neural |
-| O que a API serve | XGBoost + Isolation Forest | Só scikit-learn/xgboost, imagem leve. O Autoencoder entra via ONNX apenas se vencer |
+| Anomalia | Isolation Forest e Autoencoder (MLPRegressor do scikit-learn, [ADR 0007](adr/0007-autoencoder-no-scikit-learn.md)) | Um clássico leve e um neural |
+| O que a API serve | XGBoost + o melhor detector de anomalia | Só scikit-learn/xgboost, imagem leve |
 | Artefato | `pipeline.joblib` + `metadata.json` | Contrato entre treino e serviço |
 | Ambiente | uv + `pyproject.toml` + `uv.lock`, Python 3.12 | Lock reprodutível, rápido, instala o próprio Python |
 | Experimentos | Um YAML por experimento; métricas em `metrics.json` e `reports/supervised.json`. MLflow quando houver muitos experimentos | Para poucos treinos, arquivos versionados bastam |
@@ -115,7 +115,7 @@ Princípios que guiam todo o resto:
 │   ├── features/
 │   │   └── preprocess.py      # pipelines scikit-learn por tipo de modelo
 │   ├── models/
-│   │   ├── base.py            # interface Detector
+│   │   ├── experiment.py      # treino, limiar e avaliação de um YAML
 │   │   ├── supervised.py      # XGBoost, Random Forest
 │   │   ├── anomaly.py         # Isolation Forest, Autoencoder
 │   │   └── registry.py        # salvar/carregar artefato + metadata
@@ -229,22 +229,26 @@ Opcional, se sobrar tempo (**P3, leave-one-family-out**): para cada família, tr
 
 ### 7.1 Interface comum
 
-Todos os modelos seguem a mesma interface, então avaliação, limiares e serviço são escritos uma vez só:
+Todo modelo treinado vira um `Model` (`models/registry.py`): o estimador mais um dicionário de
+metadados (`kind`, `features`, `classes`, `threshold`...). Avaliação, limiares e serviço usam só
+dois métodos, então são escritos uma vez só:
 
 ```python
-class Detector(Protocol):
-    kind: Literal["classifier", "anomaly"]
+@dataclass
+class Model:
+    estimator: Any
+    metadata: dict[str, Any]
 
-    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> Self: ...
+    def predict(self, flows: pd.DataFrame) -> np.ndarray:
+        """Só classificadores: a família prevista."""
 
-    def score(self, X: pd.DataFrame) -> np.ndarray:
-        """Quanto maior, mais suspeito. Classificador: P(ataque). Anomalia: score de anomalia."""
-
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Classificador: rótulo da família. Anomalia: ataque/normal pelo limiar."""
+    def score(self, flows: pd.DataFrame) -> np.ndarray:
+        """Quanto maior, mais suspeito. Classificador: 1 − P(BENIGN). Anomalia: score de anomalia."""
 ```
 
-Atenção: o `score_samples` do Isolation Forest é maior para pontos *normais*. O sinal é invertido dentro do wrapper.
+`models/experiment.py` treina o modelo (`train_classifier` ou `train_detector`), fixa o limiar na
+validação e grava o artefato e as métricas. O `score_samples` do scikit-learn é maior para pontos
+*normais*, e o sinal é invertido dentro do `Model.score`.
 
 ### 7.2 Pré-processamento
 
@@ -375,7 +379,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | Grupo | Pacotes | Onde |
 |---|---|---|
 | base | numpy, pandas, pyarrow, scikit-learn, xgboost, pydantic, pyyaml, typer | Tudo |
-| train | torch (CPU), mlflow, shap | Máquina de desenvolvimento |
+| train | mlflow, quando houver muitos experimentos | Máquina de desenvolvimento |
 | notebooks | ipykernel, matplotlib, nbclient, nbformat | Notebooks de análise |
 | api | fastapi, uvicorn, pydantic-settings | Imagem da API |
 | dashboard | streamlit, httpx | Imagem do dashboard |
