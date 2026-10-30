@@ -7,9 +7,10 @@ from typing import Annotated
 import typer
 
 from nids import __version__
-from nids.config import load_data_config
+from nids.config import load_data_config, load_experiment_config
 from nids.data.pipeline import run_clean, run_split
 from nids.data.verify import record_checksums, verify_raw
+from nids.models.supervised import run_experiment
 
 app = typer.Typer(
     help="IDS com Machine Learning: dados, treino, avaliação e serviço.",
@@ -37,6 +38,22 @@ def main() -> None:
 def version() -> None:
     """Mostra a versão do pacote."""
     typer.echo(__version__)
+
+
+@app.command()
+def train(
+    experiment: Annotated[Path, typer.Argument(help="YAML do experimento (configs/experiments/).")],
+    config: DataConfigOption = DEFAULT_DATA_CONFIG,
+) -> None:
+    """Treina um classificador supervisionado e avalia na validação e no teste."""
+    cfg = load_data_config(config)
+    exp = load_experiment_config(experiment)
+    metrics = run_experiment(exp, cfg.paths)
+    typer.echo(
+        f"{exp.name}: macro-F1 {metrics['val']['macro_f1']:.4f} na validação, "
+        f"{metrics['test']['macro_f1']:.4f} no teste"
+    )
+    typer.echo(f"Modelo em {cfg.paths.models / exp.name}")
 
 
 @data_app.command("verify")
