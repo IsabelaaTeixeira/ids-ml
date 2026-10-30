@@ -61,7 +61,7 @@ Princípios que guiam todo o resto:
 | O que a API serve | XGBoost + Isolation Forest | Só scikit-learn/xgboost, imagem leve. O Autoencoder entra via ONNX apenas se vencer |
 | Artefato | `pipeline.joblib` + `metadata.json` | Contrato entre treino e serviço |
 | Ambiente | uv + `pyproject.toml` + `uv.lock`, Python 3.12 | Lock reprodutível, rápido, instala o próprio Python |
-| Experimentos | MLflow local, sem servidor | Comparar execuções sem planilha |
+| Experimentos | Um YAML por experimento; métricas em `metrics.json` e `reports/supervised.json`. MLflow quando houver muitos experimentos | Para poucos treinos, arquivos versionados bastam |
 | API | FastAPI + Pydantic | Validação automática e documentação OpenAPI de graça |
 | Qualidade | ruff, pytest, pre-commit, GitHub Actions | CI mínimo desde o primeiro dia |
 | Extras | Replay + dashboard Streamlit; SHAP | Mais impacto por esforço. Postgres, Prometheus/Grafana e laboratório ficam para a v2 |

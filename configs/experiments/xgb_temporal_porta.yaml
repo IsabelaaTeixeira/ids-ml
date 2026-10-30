@@ -1,0 +1,9 @@
+# Experimento do ADR 0004: o mesmo xgb_temporal, mas com a porta de destino entre os atributos
+name: xgb_temporal_porta
+protocol: temporal
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1
+use_destination_port: true

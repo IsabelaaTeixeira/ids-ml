@@ -1,0 +1,8 @@
+# Random Forest no protocolo random. Rodar: uv run nids train configs/experiments/rf_random.yaml
+name: rf_random
+protocol: random
+model: random_forest
+params:
+  n_estimators: 100
+  max_depth: 20
+  min_samples_leaf: 10  # limita o tamanho das árvores (e do arquivo salvo)

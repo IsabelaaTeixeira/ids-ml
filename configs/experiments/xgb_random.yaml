@@ -1,0 +1,8 @@
+# XGBoost no protocolo random. Rodar: uv run nids train configs/experiments/xgb_random.yaml
+name: xgb_random
+protocol: random
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1

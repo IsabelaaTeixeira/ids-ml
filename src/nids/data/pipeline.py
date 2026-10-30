@@ -28,7 +28,7 @@ def run_clean(config: DataConfig) -> dict[str, Any]:
 
     config.paths.interim.mkdir(parents=True, exist_ok=True)
     df.to_parquet(config.paths.interim / CLEAN_FILE, index=False)
-    _write_json(config.paths.reports / "data_quality.json", report)
+    write_json(config.paths.reports / "data_quality.json", report)
     return report
 
 
@@ -46,11 +46,11 @@ def run_split(config: DataConfig) -> dict[str, Any]:
                 out_dir / f"{name}.parquet", index=False
             )
         summary[protocol] = split_summary(df, part)
-    _write_json(config.paths.reports / "splits.json", summary)
+    write_json(config.paths.reports / "splits.json", summary)
     return summary
 
 
-def _write_json(path: Path, data: dict[str, Any]) -> None:
+def write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     path.write_text(text, encoding="utf-8", newline="\n")

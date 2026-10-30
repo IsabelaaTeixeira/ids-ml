@@ -1,6 +1,7 @@
 """Leitura e validação dos arquivos de configuração (YAML)."""
 
 from pathlib import Path
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PositiveFloat, field_validator, model_validator
@@ -18,6 +19,7 @@ class Paths(_Config):
     processed: Path
     reports: Path
     checksums: Path
+    models: Path = Path("models")
 
 
 class TimestampConfig(_Config):
@@ -56,6 +58,22 @@ class DataConfig(_Config):
     split: SplitConfig
 
 
+class ExperimentConfig(_Config):
+    """Um treino supervisionado (configs/experiments/*.yaml)."""
+
+    name: str
+    protocol: Literal["random", "temporal", "unseen"]
+    model: Literal["xgboost", "random_forest"]
+    params: dict[str, Any] = Field(default_factory=dict)
+    use_destination_port: bool = False  # ADR 0004
+    seed: int = 42
+
+
 def load_data_config(path: Path) -> DataConfig:
     with path.open(encoding="utf-8") as f:
         return DataConfig.model_validate(yaml.safe_load(f))
+
+
+def load_experiment_config(path: Path) -> ExperimentConfig:
+    with path.open(encoding="utf-8") as f:
+        return ExperimentConfig.model_validate(yaml.safe_load(f))

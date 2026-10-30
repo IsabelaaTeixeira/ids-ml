@@ -1,0 +1,8 @@
+# XGBoost no protocolo temporal. Rodar: uv run nids train configs/experiments/xgb_temporal.yaml
+name: xgb_temporal
+protocol: temporal
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1

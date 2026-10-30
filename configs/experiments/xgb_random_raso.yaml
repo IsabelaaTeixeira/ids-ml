@@ -1,0 +1,8 @@
+# Checagem de sensibilidade: xgb_random com profundidade máxima 4 (o padrão é 8)
+name: xgb_random_raso
+protocol: random
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 4
+  learning_rate: 0.1
