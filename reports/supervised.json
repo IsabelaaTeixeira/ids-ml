@@ -943,5 +943,225 @@
         }
       }
     }
+  },
+  "xgb_random_sem_tcp": {
+    "protocol": "random",
+    "model": "xgboost",
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 8,
+      "learning_rate": 0.1
+    },
+    "use_destination_port": false,
+    "exclude_features": [
+      "init_win_bytes_forward",
+      "init_win_bytes_backward",
+      "min_seg_size_forward"
+    ],
+    "seed": 42,
+    "val": {
+      "macro_f1": 0.6893603031180179,
+      "per_class": {
+        "BENIGN": {
+          "precision": 0.9994971992228064,
+          "recall": 0.9541847372508913,
+          "f1": 0.9763154939588653,
+          "support": 414578
+        },
+        "Bot": {
+          "precision": 0.03513840991704725,
+          "recall": 0.9666666666666667,
+          "f1": 0.06781185358395539,
+          "support": 390
+        },
+        "BruteForce": {
+          "precision": 0.5213724920034893,
+          "recall": 0.9797814207650273,
+          "f1": 0.6805845511482255,
+          "support": 1830
+        },
+        "DDoS": {
+          "precision": 0.9978939978939979,
+          "recall": 0.9993750732336054,
+          "f1": 0.9986339864179221,
+          "support": 25603
+        },
+        "DoS": {
+          "precision": 0.9846884091257082,
+          "recall": 0.9966164733837849,
+          "f1": 0.9906165359485514,
+          "support": 38717
+        },
+        "PortScan": {
+          "precision": 0.9948715120767618,
+          "recall": 0.9994460140712426,
+          "f1": 0.9971535166505459,
+          "support": 18051
+        },
+        "WebAttack": {
+          "precision": 0.06087346694585701,
+          "recall": 0.9487179487179487,
+          "f1": 0.11440618411806043,
+          "support": 429
+        }
+      }
+    },
+    "test": {
+      "macro_f1": 0.6900595560185725,
+      "per_class": {
+        "BENIGN": {
+          "precision": 0.9994745006492949,
+          "recall": 0.9542378032601826,
+          "f1": 0.9763324415838261,
+          "support": 414578
+        },
+        "Bot": {
+          "precision": 0.03471579337159785,
+          "recall": 0.959079283887468,
+          "f1": 0.06700616456714018,
+          "support": 391
+        },
+        "BruteForce": {
+          "precision": 0.5298840321141838,
+          "recall": 0.9732386673948662,
+          "f1": 0.686176357335387,
+          "support": 1831
+        },
+        "DDoS": {
+          "precision": 0.9976997153885142,
+          "recall": 0.999531286618233,
+          "f1": 0.9986146611773429,
+          "support": 25602
+        },
+        "DoS": {
+          "precision": 0.9856379852291023,
+          "recall": 0.996203120157041,
+          "f1": 0.9908923914858633,
+          "support": 38716
+        },
+        "PortScan": {
+          "precision": 0.9950896551724138,
+          "recall": 0.9991690211068639,
+          "f1": 0.997125165855816,
+          "support": 18051
+        },
+        "WebAttack": {
+          "precision": 0.06077759570981677,
+          "recall": 0.9532710280373832,
+          "f1": 0.1142697101246324,
+          "support": 428
+        }
+      }
+    }
+  },
+  "xgb_temporal_sem_tcp": {
+    "protocol": "temporal",
+    "model": "xgboost",
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 8,
+      "learning_rate": 0.1
+    },
+    "use_destination_port": false,
+    "exclude_features": [
+      "init_win_bytes_forward",
+      "init_win_bytes_backward",
+      "min_seg_size_forward"
+    ],
+    "seed": 42,
+    "val": {
+      "macro_f1": 0.6832849649820284,
+      "per_class": {
+        "BENIGN": {
+          "precision": 0.9987516583486007,
+          "recall": 0.9533355685433587,
+          "f1": 0.9755153017023283,
+          "support": 414577
+        },
+        "Bot": {
+          "precision": 0.028591851322373123,
+          "recall": 0.717948717948718,
+          "f1": 0.054993616812334285,
+          "support": 390
+        },
+        "BruteForce": {
+          "precision": 0.5009644530173601,
+          "recall": 0.9934426229508196,
+          "f1": 0.666056054222385,
+          "support": 1830
+        },
+        "DDoS": {
+          "precision": 0.9982444505130106,
+          "recall": 0.9994141311565051,
+          "f1": 0.9988289483956593,
+          "support": 25603
+        },
+        "DoS": {
+          "precision": 0.9853058288591466,
+          "recall": 0.9906501020223675,
+          "f1": 0.9879707382412034,
+          "support": 38717
+        },
+        "PortScan": {
+          "precision": 0.997292817679558,
+          "recall": 1.0,
+          "f1": 0.9986445741473265,
+          "support": 18051
+        },
+        "WebAttack": {
+          "precision": 0.05327342747111682,
+          "recall": 0.9673659673659674,
+          "f1": 0.10098552135296265,
+          "support": 429
+        }
+      }
+    },
+    "test": {
+      "macro_f1": 0.6430104372354019,
+      "per_class": {
+        "BENIGN": {
+          "precision": 0.9917357491031891,
+          "recall": 0.932924564255701,
+          "f1": 0.9614316200807635,
+          "support": 414578
+        },
+        "Bot": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 391
+        },
+        "BruteForce": {
+          "precision": 0.5408938887199757,
+          "recall": 0.971600218459858,
+          "f1": 0.694921875,
+          "support": 1831
+        },
+        "DDoS": {
+          "precision": 0.7153583235277637,
+          "recall": 0.99734395750332,
+          "f1": 0.8331375619942574,
+          "support": 25602
+        },
+        "DoS": {
+          "precision": 0.985353277806108,
+          "recall": 0.8983624341357578,
+          "f1": 0.9398492177155673,
+          "support": 38716
+        },
+        "PortScan": {
+          "precision": 0.9387595280359194,
+          "recall": 0.9961220984986981,
+          "f1": 0.9665905120279532,
+          "support": 18051
+        },
+        "WebAttack": {
+          "precision": 0.05560804427048185,
+          "recall": 0.9626168224299065,
+          "f1": 0.10514227382927141,
+          "support": 428
+        }
+      }
+    }
   }
 }
