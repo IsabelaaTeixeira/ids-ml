@@ -1,6 +1,7 @@
 """Classificadores supervisionados (etapa 2)."""
 
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -21,13 +22,20 @@ EXCLUDED_FAMILIES = ("Heartbleed", "Infiltration")
 
 
 def load_xy(
-    split_dir: Path, part: str, use_destination_port: bool = False
+    split_dir: Path,
+    part: str,
+    use_destination_port: bool = False,
+    exclude: Sequence[str] = (),
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """Atributos e família de uma parte do split, sem as classes raras.
+    """Atributos e família de uma parte do split, sem as classes raras e sem `exclude`.
 
     A porta de destino fica de fora por padrão (ADR 0004).
     """
-    features = [c for c in schema.FEATURES if use_destination_port or c != "destination_port"]
+    features = [
+        c
+        for c in schema.FEATURES
+        if (use_destination_port or c != "destination_port") and c not in exclude
+    ]
     df = pd.read_parquet(split_dir / f"{part}.parquet", columns=[*features, schema.FAMILY])
     df = df[~df[schema.FAMILY].isin(EXCLUDED_FAMILIES)]
     return df[features], df[schema.FAMILY].astype(str)
@@ -36,7 +44,7 @@ def load_xy(
 def run_experiment(experiment: ExperimentConfig, paths: Paths) -> dict[str, Any]:
     """Treina, avalia na validação e no teste, e grava o modelo e as métricas."""
     split_dir = paths.processed / experiment.protocol
-    X, y = load_xy(split_dir, "train", experiment.use_destination_port)
+    X, y = load_xy(split_dir, "train", experiment.use_destination_port, experiment.exclude_features)
     classes = sorted(y.unique())
     estimator = _build(experiment)
     # Pesos inversos à frequência: sem eles, o tráfego normal (83 %) domina o treino
@@ -53,7 +61,9 @@ def run_experiment(experiment: ExperimentConfig, paths: Paths) -> dict[str, Any]
 
     metrics = {}
     for part in ("val", "test"):
-        X_part, y_part = load_xy(split_dir, part, experiment.use_destination_port)
+        X_part, y_part = load_xy(
+            split_dir, part, experiment.use_destination_port, experiment.exclude_features
+        )
         metrics[part] = evaluate(y_part, model.predict(X_part))
 
     directory = paths.models / experiment.name

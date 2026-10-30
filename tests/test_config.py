@@ -4,7 +4,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from nids.config import DataConfig, load_data_config
+from nids.config import DataConfig, ExperimentConfig, load_data_config
 
 DATA_CONFIG = Path(__file__).parents[1] / "configs" / "data.yaml"
 
@@ -42,3 +42,12 @@ def test_dia_desconhecido_falha():
 
     with pytest.raises(ValidationError):
         DataConfig.model_validate(data)
+
+
+def test_exclusao_de_atributos_confere_os_nomes():
+    experiment = {"name": "x", "protocol": "temporal", "model": "xgboost"}
+
+    valid = ExperimentConfig.model_validate(experiment | {"exclude_features": ["protocol"]})
+    assert valid.exclude_features == ["protocol"]
+    with pytest.raises(ValidationError, match="atributos desconhecidos"):
+        ExperimentConfig.model_validate(experiment | {"exclude_features": ["init_win_bytes"]})

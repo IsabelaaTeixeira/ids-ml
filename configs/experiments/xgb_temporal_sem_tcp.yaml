@@ -1,0 +1,12 @@
+# Hipótese do atalho: xgb_temporal sem os atributos que dependem do sistema operacional da máquina
+name: xgb_temporal_sem_tcp
+protocol: temporal
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1
+exclude_features:
+  - init_win_bytes_forward
+  - init_win_bytes_backward
+  - min_seg_size_forward
