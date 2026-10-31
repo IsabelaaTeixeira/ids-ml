@@ -1,6 +1,7 @@
 """Contrato HTTP da API: o que entra, o que sai e o que é recusado."""
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +11,8 @@ from nids.serving.api import Settings, create_app
 from .conftest import flows
 
 MAX_BATCH = 3
+# Exemplo citado no README: três fluxos reais do teste do P2
+EXAMPLE = Path(__file__).parents[2] / "docs" / "exemplo_predict.json"
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +39,15 @@ def test_predict_devolve_um_veredito_por_fluxo_na_ordem(client):
     assert data["models"] == {"classifier": "classificador", "detector": "detector"}
     assert [r["verdict"] for r in data["results"]] == ["attack", "benign"]
     assert data["results"][0]["family"] == "PortScan"
+
+
+def test_exemplo_da_documentacao_segue_o_contrato(client):
+    body = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+
+    response = client.post("/predict", json=body)
+
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == len(body["flows"])
 
 
 def test_health_e_model_descrevem_o_servico(client):
