@@ -79,7 +79,7 @@ Princípios que guiam todo o resto:
 ├── docker-compose.yml
 ├── docker/
 │   ├── api.Dockerfile
-│   └── dashboard.Dockerfile
+│   └── demo.Dockerfile        # replay e painel
 ├── configs/
 │   ├── data.yaml              # caminhos, correção do horário, parâmetros dos splits
 │   ├── raw_files.sha256       # checksums dos CSVs brutos (nids data verify --record)
@@ -126,8 +126,9 @@ Princípios que guiam todo o resto:
 │   ├── serving/
 │   │   ├── predictor.py       # veredito combinado, sem FastAPI
 │   │   └── api.py             # app FastAPI: configuração, entrada e saída, rotas
-│   └── replay/
-│       └── replay.py
+│   └── demo/
+│       ├── replay.py          # teste pela API, vereditos num SQLite
+│       └── summary.py         # contas do painel, em SQL
 ├── dashboard/
 │   └── app.py                 # Streamlit
 └── tests/
@@ -369,9 +370,11 @@ Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
 
 ### 9.4 Replay e dashboard
 
-`nids replay --file data/processed/unseen/test.parquet --speed 50` ordena os fluxos por Timestamp e envia lotes para `/predict` respeitando os intervalos reais (acelerados). Cada resultado vai para um SQLite com o veredito **e o rótulo verdadeiro**. O Streamlit lê esse banco a cada poucos segundos e mostra alertas por minuto, por família, e acertos vs. erros ao vivo. Mostrar os erros junto com os alertas é mais honesto e mais interessante.
+`nids replay` (`demo/replay.py`) ordena o teste do P2 por Timestamp e envia à API, em lotes de até 1000, os fluxos de cada minuto da captura. Os horários têm resolução de minuto, e o ritmo é acelerado `--speed` vezes (padrão 60: um minuto de captura por segundo, cerca de 20 minutos para quinta e sexta). Pausas de mais de 5 minutos, como a madrugada entre os dois dias, viram 5 minutos. `--start '2017-07-07 13:00'` começa no meio da captura. Cada resultado vai para um SQLite (`data/demo/replay.db`, modo WAL) com o veredito **e o rótulo verdadeiro**, e os IPs ficam no banco sem nunca ir para a API.
 
-O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração exercita o serviço de verdade.
+O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração exercita o serviço de verdade. A API da demonstração serve o **XGBoost do P2** com o autoencoder: o XGBoost do P1 treinou com o começo de quinta e sexta, e o replay se recusa a rodar se algum modelo servido não for do protocolo do teste ([ADR 0009](adr/0009-replay-com-modelos-do-p2.md)).
+
+O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas feitas em SQL (`demo/summary.py`), porque no fim são quase um milhão de vereditos. Ele mostra fluxos analisados, revocação, alarmes falsos e alertas até o momento; um gráfico por dia com ataques reais, alertas de ataque e alertas suspeitos por minuto; a tabela de acertos e erros por família verdadeira; e os últimos alertas, com IPs e acerto ou erro. Mostrar os erros junto com os alertas é mais honesto e mais interessante.
 
 ## 10. Empacotamento
 
@@ -383,7 +386,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | train | mlflow, quando houver muitos experimentos | Máquina de desenvolvimento |
 | notebooks | ipykernel, matplotlib, nbclient, nbformat | Notebooks de análise |
 | api | fastapi, uvicorn, pydantic-settings | Imagem da API (e o `uv sync` padrão, para os testes) |
-| dashboard | streamlit, httpx | Imagem do dashboard |
+| demo | streamlit, httpx2 | Imagem da demonstração: replay e painel |
 | dev | pytest, pytest-cov, httpx2 (cliente do TestClient), ruff, pre-commit | Desenvolvimento e CI |
 
 **Docker:**
@@ -391,7 +394,8 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 - `docker/api.Dockerfile`: `python:3.12-slim`, build em dois estágios com uv, instala só `base + api` (sem jupyter nem ferramentas de dev), usuário não-root, `HEALTHCHECK` em `/health`. O NCCL que o XGBoost puxa no Linux (centenas de MB, só serve para várias GPUs) fica de fora; a libgomp, que a imagem slim não traz, entra.
 - O `.dockerignore` é uma lista branca (`pyproject.toml`, `uv.lock`, `README.md`, `src/`): `data/` nunca vai para o contexto do build.
 - O modelo entra por volume em `/models`, então um modelo novo não exige rebuild.
-- `docker-compose.yml`: `api` sempre; `replay` e `dashboard` no profile `demo` (`docker compose --profile demo up`) na etapa 5.
+- `docker/demo.Dockerfile`: o mesmo desenho, com o grupo `demo` e o `dashboard/`; serve ao replay e ao painel.
+- `docker-compose.yml`: `api` sempre, na porta 8000. No profile `demo` (`docker compose --profile demo up --build`): `api-demo`, interna, com o XGBoost do P2; `replay`, que espera a `api-demo` ficar saudável e lê `data/processed` por volume; e `dashboard`, na porta 8501. Replay e painel dividem o banco num volume nomeado.
 
 ## 11. Qualidade
 
@@ -403,7 +407,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | Dados reais | Checagens que exigem o dataset | Marcadas com `@pytest.mark.data`, fora do CI |
 
 - **ruff** para lint e formatação. **pre-commit** com ruff e `check-added-large-files`, que impede commitar um CSV por engano.
-- **CI** (`.github/workflows/ci.yml`) em todo push e PR: `uv sync`, `ruff check`, `ruff format --check`, `pytest -m "not data"` com cobertura e, em outro job, `docker build` seguido de um `import xgboost` dentro da imagem (pega biblioteca nativa faltando).
+- **CI** (`.github/workflows/ci.yml`) em todo push e PR: `uv sync`, `ruff check`, `ruff format --check`, `pytest -m "not data"` com cobertura e, em outro job, o `docker build` das imagens da API e da demonstração, seguido de imports dentro delas (pega biblioteca nativa faltando).
 
 ## 12. Fluxo de trabalho
 
@@ -420,6 +424,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 - Os das etapas seguintes:
   - [0007](adr/0007-autoencoder-no-scikit-learn.md): autoencoder com o MLPRegressor do scikit-learn
   - [0008](adr/0008-contrato-da-api.md): contrato da API e veredito combinado
+  - [0009](adr/0009-replay-com-modelos-do-p2.md): a demonstração reproduz o teste do P2 com os modelos do P2
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto
