@@ -28,6 +28,11 @@ class Model:
         codes = self.estimator.predict(flows[self.metadata["features"]])
         return np.asarray(self.metadata["classes"])[codes]
 
+    def probabilities(self, flows: pd.DataFrame) -> pd.DataFrame:
+        """Só classificadores: a probabilidade de cada família, uma coluna por classe."""
+        proba = self.estimator.predict_proba(flows[self.metadata["features"]])
+        return pd.DataFrame(proba, columns=self.metadata["classes"], index=flows.index)
+
     def score(self, flows: pd.DataFrame) -> np.ndarray:
         """Quanto maior, mais suspeito: P(ataque) no classificador, anomalia no detector."""
         X = flows[self.metadata["features"]]
