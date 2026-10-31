@@ -48,6 +48,32 @@ dataset limpo (os de `schema.FEATURES`). A resposta tem um veredito por fluxo:
 Os limiares são os escolhidos na validação ([ADR 0008](docs/adr/0008-contrato-da-api.md)).
 `GET /model` mostra os modelos carregados e os limiares, e `GET /health` confirma que a API está no ar.
 
+### Testando com fluxos reais
+
+[docs/exemplo_predict.json](docs/exemplo_predict.json) traz três fluxos do teste do P2: um DDoS,
+um da infiltração e um normal. Em http://localhost:8000/docs, abra `POST /predict`, clique em
+**Try it out**, cole o conteúdo do arquivo e clique em **Execute**. Pelo terminal:
+
+```bash
+curl -X POST http://localhost:8000/predict -H "content-type: application/json" -d @docs/exemplo_predict.json
+```
+
+No PowerShell, use `curl.exe` em vez de `curl`. A resposta traz um resultado por fluxo, nesta ordem:
+
+| Fluxo | `verdict` | `family` | `attack_probability` | `anomaly_score` |
+|---|---|---|---|---|
+| DDoS | `attack` | DDoS | 0,9999998 | 0,044 |
+| Infiltration | `suspicious` | | 0,00001 | 0,101 |
+| Normal | `benign` | | 0,00002 | 0,067 |
+
+- `attack_probability` é a probabilidade de ataque dada pelo XGBoost. Acima de 0,34, o fluxo é
+  `attack`, com a família.
+- `anomaly_score` mede o quanto o fluxo foge do tráfego normal, segundo o autoencoder. Acima de
+  0,072, o fluxo é `suspicious`.
+
+O XGBoost reconhece o DDoS, que viu no treino. A infiltração ele não conhece, mas o autoencoder a
+acha estranha. Os limiares exatos estão em `GET /model`.
+
 ## Estrutura
 
 | Pasta | Conteúdo |
