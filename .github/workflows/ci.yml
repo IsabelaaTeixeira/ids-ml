@@ -27,14 +27,22 @@ jobs:
         run: uv run pytest -m "not data" --cov
 
   docker:
-    name: Imagem da API
+    name: Imagens Docker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build
+      - name: Build da API
         run: docker build -f docker/api.Dockerfile -t nids-api .
 
       # Importar o XGBoost carrega a biblioteca nativa: pega libgomp ou NCCL faltando
-      - name: Bibliotecas do modelo carregam na imagem
+      - name: Bibliotecas do modelo carregam na imagem da API
         run: docker run --rm nids-api python -c "import xgboost, sklearn, nids.serving.api"
+
+      - name: Build da demonstração
+        run: docker build -f docker/demo.Dockerfile -t nids-demo .
+
+      - name: Replay e painel carregam na imagem da demonstração
+        run: |
+          docker run --rm nids-demo nids replay --help
+          docker run --rm nids-demo python -c "import streamlit, altair, nids.demo.summary"
