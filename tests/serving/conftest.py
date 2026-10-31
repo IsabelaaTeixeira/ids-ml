@@ -32,6 +32,7 @@ def _classifier() -> Model:
     tree = DecisionTreeClassifier(random_state=0).fit(X, y)
     metadata = {
         "name": "classificador",
+        "protocol": "unseen",
         "kind": "classifier",
         "features": ["flow_duration"],
         "classes": classes,

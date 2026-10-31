@@ -1,12 +1,57 @@
 # docker compose up --build: sobe a API em http://localhost:8000 com os modelos de models/.
-# Outros modelos: NIDS_CLASSIFIER e NIDS_DETECTOR em environment (padrão: xgb_temporal e ae_unseen).
+# docker compose --profile demo up --build: também o replay do teste do P2 e o painel em
+# http://localhost:8501.
+
+x-api: &api
+  build:
+    context: .
+    dockerfile: docker/api.Dockerfile
+  image: nids-api
+  volumes:
+    - ./models:/models:ro
+
+x-demo: &demo
+  build:
+    context: .
+    dockerfile: docker/demo.Dockerfile
+  image: nids-demo
+  profiles: [demo]
+
 services:
   api:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
-    image: nids-api
+    <<: *api
     ports:
       - "8000:8000"
+
+  # O replay usa o teste do P2, que só é inédito para modelos do P2: o XGBoost do P1 treinou com
+  # o começo de quinta e sexta. Esta API, interna à demonstração, serve o XGBoost do P2.
+  api-demo:
+    <<: *api
+    profiles: [demo]
+    environment:
+      NIDS_CLASSIFIER: xgb_unseen
+
+  replay:
+    <<: *demo
+    command:
+      - nids
+      - replay
+      - --api=http://api-demo:8000
+      - --file=/data/processed/unseen/test.parquet
+      - --db=/demo/replay.db
     volumes:
-      - ./models:/models:ro
+      - demo:/demo
+      - ./data/processed:/data/processed:ro
+    depends_on:
+      api-demo:
+        condition: service_healthy
+
+  dashboard:
+    <<: *demo
+    ports:
+      - "8501:8501"
+    volumes:
+      - demo:/demo
+
+volumes:
+  demo:

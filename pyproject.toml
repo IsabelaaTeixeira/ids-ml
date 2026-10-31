@@ -48,14 +48,18 @@ show_missing = true
 skip_covered = true
 
 [tool.uv]
-# A API é testada no CI; a imagem Docker instala só o grupo api (docker/api.Dockerfile)
-default-groups = ["dev", "api"]
+# API e demo são testados no CI; cada imagem Docker instala só o próprio grupo (docker/)
+default-groups = ["dev", "api", "demo"]
 
 [dependency-groups]
 api = [
     "fastapi>=0.162.0",
     "pydantic-settings>=2.16.2",
     "uvicorn>=0.54.0",
+]
+demo = [
+    "httpx2>=2.16.0",
+    "streamlit>=1.66.1",
 ]
 dev = [
     "httpx2>=2.16.0",

@@ -2,7 +2,7 @@
 
 Detecção de intrusão em fluxos de rede com o dataset CIC-IDS2017. O projeto compara um classificador supervisionado, bom em ataques conhecidos, com detectores de anomalia, que tentam pegar ataques nunca vistos, e empacota o resultado como uma API em Docker.
 
-> Em construção. Etapa atual: 4, serviço de inferência. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+> Em construção. Etapa atual: 5, demonstração com replay e painel. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## Como rodar
 
@@ -74,11 +74,46 @@ No PowerShell, use `curl.exe` em vez de `curl`. A resposta traz um resultado por
 O XGBoost reconhece o DDoS, que viu no treino. A infiltração ele não conhece, mas o autoencoder a
 acha estranha. Os limiares exatos estão em `GET /model`.
 
+## Demonstração
+
+![Painel durante o replay da tarde de sexta-feira](docs/demo.gif)
+
+O replay manda à API o teste do P2 (quinta e sexta-feira, quase 1 milhão de fluxos) em ordem
+cronológica, um minuto de captura por segundo. Cada veredito vai para um banco ao lado do rótulo
+verdadeiro, e um painel mostra ao vivo os alertas, os acertos e os erros:
+
+```bash
+docker compose --profile demo up --build    # painel em http://localhost:8501
+```
+
+O replay inteiro leva cerca de 20 minutos. Para ver só a tarde de sexta, com o PortScan e o DDoS:
+
+```bash
+docker compose --profile demo run --rm replay nids replay --api=http://api-demo:8000 \
+  --file=/data/processed/unseen/test.parquet --db=/demo/replay.db --start="2017-07-07 13:00"
+```
+
+No Git Bash do Windows, comece o comando com `MSYS_NO_PATHCONV=1`: sem isso, ele troca
+`/data/...` e `/demo/...` por caminhos do Windows antes de chegarem ao container.
+
+Nessa demonstração, a API serve o XGBoost **do P2**, que nunca viu esses ataques. O do P1, da API
+padrão, treinou com o começo de quinta e sexta, e o replay se recusa a usar modelos que podem ter
+visto o teste ([ADR 0009](docs/adr/0009-replay-com-modelos-do-p2.md)). Ao fim, o painel mostra
+45,4 % dos ataques detectados, o mesmo resultado da combinação de classificador e detector na
+avaliação offline, e 70.953 alarmes falsos. Cerca de 80 % desses alarmes são tráfego de ataque que
+o conjunto rotula como normal: as respostas da vítima e uma varredura feita pela máquina invadida.
+
+Sem Docker, rode em três terminais:
+`NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_app --factory`,
+`uv run nids replay` e `uv run streamlit run dashboard/app.py`.
+
 ## Estrutura
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/nids/` | Código do projeto: dados, modelos, avaliação e API |
+| `src/nids/` | Código do projeto: dados, modelos, avaliação, API e replay |
+| `dashboard/` | Painel da demonstração (Streamlit) |
+| `docker/` | Imagens da API e da demonstração |
 | `tests/` | Testes automatizados |
 | `data/` | Dados brutos e processados, fora do git (veja [data/README.md](data/README.md)) |
 | `configs/` | Configuração dos dados e dos experimentos |
