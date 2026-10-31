@@ -22,7 +22,8 @@ treinado em outro protocolo.
 
 - No `docker-compose.yml`, a demonstração tem a própria API (`api-demo`, interna), com
   `NIDS_CLASSIFIER=xgb_unseen`; a API da porta 8000 continua com o XGBoost do P1.
-- O classificador do P2 só conhece força bruta, DoS e Heartbleed: os ataques que ele pega aparecem com
-  essas famílias (o DDoS como DoS, por exemplo).
+- O classificador do P2 só conhece força bruta e DoS (o Heartbleed fica fora do multiclasse,
+  [ADR 0003](0003-familias-e-classes-raras.md)): os ataques que ele pega aparecem com essas famílias.
+  No replay, quase todos os ataques web e todo o DDoS detectados saem como DoS.
 - A trava compara o protocolo dos modelos com a pasta do teste (`data/processed/<protocolo>/`). Ela é
   conservadora: recusa também combinações que seriam válidas, como o autoencoder no teste do P1.
