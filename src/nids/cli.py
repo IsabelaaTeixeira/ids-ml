@@ -1,12 +1,14 @@
 """Linha de comando do projeto. Use `uv run nids --help` para ver os comandos."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
+import pandas as pd
 import typer
 
-from nids import __version__
+from nids import __version__, schema
 from nids.config import load_data_config, load_experiment_config
 from nids.data.pipeline import run_clean, run_split
 from nids.data.verify import record_checksums, verify_raw
@@ -61,6 +63,46 @@ def train(
         f"({detection['false_alarms']} alarmes falsos)"
     )
     typer.echo(f"Modelo em {cfg.paths.models / exp.name}")
+
+
+@app.command()
+def replay(
+    api: Annotated[str, typer.Option(help="Endereço da API.")] = "http://localhost:8000",
+    file: Annotated[Path, typer.Option(help="Parte de teste a reproduzir.")] = Path(
+        "data/processed/unseen/test.parquet"
+    ),
+    db: Annotated[Path, typer.Option(help="Banco SQLite que o painel lê.")] = Path(
+        "data/demo/replay.db"
+    ),
+    speed: Annotated[
+        float, typer.Option(help="Aceleração da captura (60: um minuto por segundo).")
+    ] = 60,
+    start: Annotated[
+        datetime | None,
+        typer.Option(
+            help="Começa neste horário da captura, ex.: '2017-07-07 13:00'.",
+            formats=["%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M"],
+        ),
+    ] = None,
+) -> None:
+    """Manda o teste à API em ordem cronológica e grava os vereditos para o painel."""
+    # Só a demonstração precisa do cliente HTTP (grupo de dependências demo)
+    import httpx2
+
+    from nids.demo.replay import replay as run_replay
+
+    logging.getLogger("httpx2").setLevel(logging.WARNING)  # uma linha por requisição é demais
+    flows = pd.read_parquet(file)
+    if start is not None:
+        flows = flows[flows[schema.TIMESTAMP] >= start]
+    with httpx2.Client(base_url=api, timeout=60) as client:
+        try:
+            # O protocolo é a pasta da parte: data/processed/<protocolo>/test.parquet
+            sent = run_replay(flows, client, db, protocol=file.parent.name, speed=speed)
+        except ValueError as error:
+            typer.echo(f"Replay recusado: {error}", err=True)
+            raise typer.Exit(1) from error
+    typer.echo(f"{sent} fluxos enviados; vereditos em {db}")
 
 
 @data_app.command("verify")
