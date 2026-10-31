@@ -2,7 +2,7 @@
 
 Detecção de intrusão em fluxos de rede com o dataset CIC-IDS2017. O projeto compara um classificador supervisionado, bom em ataques conhecidos, com detectores de anomalia, que tentam pegar ataques nunca vistos, e empacota o resultado como uma API em Docker.
 
-> Em construção. Etapa atual: 3, detecção de anomalias. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+> Em construção. Etapa atual: 4, serviço de inferência. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## Como rodar
 
@@ -27,6 +27,26 @@ teste e grava o modelo em `models/` e as métricas em `reports/supervised.json` 
 uv run nids train configs/experiments/xgb_temporal.yaml
 uv run nids train configs/experiments/iforest_unseen.yaml
 ```
+
+## API
+
+Com `xgb_temporal` e `ae_unseen` treinados em `models/`, a API sobe com [Docker](https://docs.docker.com/get-started/get-docker/):
+
+```bash
+docker compose up --build    # http://localhost:8000/docs mostra as rotas
+```
+
+Sem Docker, use `uv run uvicorn nids.serving.api:create_app --factory`.
+
+`POST /predict` recebe `{"flows": [...]}`, com até 1000 fluxos. Cada fluxo traz os 60 atributos do
+dataset limpo (os de `schema.FEATURES`). A resposta tem um veredito por fluxo:
+
+- `attack`, com a família, quando o classificador reconhece um ataque conhecido;
+- `suspicious`, quando ele não reconhece, mas o detector de anomalia dispara;
+- `benign`, nos demais casos.
+
+Os limiares são os escolhidos na validação ([ADR 0008](docs/adr/0008-contrato-da-api.md)).
+`GET /model` mostra os modelos carregados e os limiares, e `GET /health` confirma que a API está no ar.
 
 ## Estrutura
 
