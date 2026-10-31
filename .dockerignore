@@ -1,0 +1,8 @@
+# Lista branca: data/ tem gigabytes e models/ entra por volume, então só o necessário vai
+# para o contexto do build
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+**/__pycache__

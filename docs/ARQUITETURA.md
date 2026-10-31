@@ -58,7 +58,7 @@ Princípios que guiam todo o resto:
 | Rótulos | Famílias de ataque | Várias classes originais têm só dezenas de amostras |
 | Supervisionado | XGBoost (principal) e Random Forest (comparação) | Fortes em dados tabulares e com explicação via SHAP |
 | Anomalia | Isolation Forest e Autoencoder (MLPRegressor do scikit-learn, [ADR 0007](adr/0007-autoencoder-no-scikit-learn.md)) | Um clássico leve e um neural |
-| O que a API serve | XGBoost + o melhor detector de anomalia | Só scikit-learn/xgboost, imagem leve |
+| O que a API serve | XGBoost do P1 + autoencoder, com os limiares do treino ([ADR 0008](adr/0008-contrato-da-api.md)) | Só scikit-learn/xgboost, imagem leve |
 | Artefato | `pipeline.joblib` + `metadata.json` | Contrato entre treino e serviço |
 | Ambiente | uv + `pyproject.toml` + `uv.lock`, Python 3.12 | Lock reprodutível, rápido, instala o próprio Python |
 | Experimentos | Um YAML por experimento; métricas em `metrics.json` e `reports/supervised.json`. MLflow quando houver muitos experimentos | Para poucos treinos, arquivos versionados bastam |
@@ -124,9 +124,8 @@ Princípios que guiam todo o resto:
 │   │   ├── thresholds.py      # limiar por taxa de falso positivo alvo
 │   │   └── explain.py         # SHAP
 │   ├── serving/
-│   │   ├── predictor.py       # lógica de predição, sem FastAPI
-│   │   ├── schemas.py         # modelos Pydantic de entrada e saída
-│   │   └── api.py             # app FastAPI
+│   │   ├── predictor.py       # veredito combinado, sem FastAPI
+│   │   └── api.py             # app FastAPI: configuração, entrada e saída, rotas
 │   └── replay/
 │       └── replay.py
 ├── dashboard/
@@ -135,7 +134,7 @@ Princípios que guiam todo o resto:
     ├── conftest.py            # fábrica de dados sintéticos + modelo minúsculo
     ├── data/                  # test_clean.py, test_split.py
     ├── models/                # test_registry.py
-    └── serving/               # test_predictor.py, test_api.py
+    └── serving/               # test_predictor, test_api, test_startup, test_real_flows
 ```
 
 ## 5. Pipeline de dados
@@ -342,29 +341,31 @@ O `Predictor` não sabe nada de HTTP. Por isso é testável sozinho e reutilizá
 |---|---|---|
 | GET | `/health` | Verificação de vida |
 | GET | `/model` | Versões, features e limiares dos modelos carregados |
-| POST | `/predict` | Lista de fluxos (1 a N, com limite) e um veredito por fluxo |
+| POST | `/predict` | `{"flows": [...]}` com 1 a `NIDS_MAX_BATCH` fluxos e um veredito por fluxo |
 
 ```json
 {
-  "models": {"classifier": "xgb_temporal@20261120-ab12cd3", "anomaly": "iforest_unseen@20261124-cd34ef5"},
+  "models": {"classifier": "xgb_temporal", "detector": "ae_unseen"},
   "results": [
-    {"verdict": "attack", "label": "DoS", "attack_probability": 0.97, "anomaly_score": 0.71, "is_anomaly": true}
+    {"verdict": "attack", "family": "DDoS", "attack_probability": 0.9999998, "anomaly_score": 0.0435}
   ]
 }
 ```
 
-**Veredito combinado** (desenho clássico de IDS híbrido):
+**Veredito combinado** (desenho clássico de IDS híbrido, [ADR 0008](adr/0008-contrato-da-api.md)):
 
-- O classificador diz ataque: `attack`, com a família.
-- O classificador diz normal, mas o score de anomalia passa do limiar: `suspicious`.
+- `attack_probability` (1 − P(BENIGN)) passa do limiar do classificador: `attack`, com a família de ataque mais provável.
+- Não passa, mas o score de anomalia passa do limiar do detector: `suspicious`.
 - Caso contrário: `benign`.
+
+Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
 
 ### 9.3 Detalhes
 
-- O schema de entrada é gerado a partir de `schema.FEATURES`, então a lista de features existe em um lugar só.
-- Pydantic com `extra="forbid"` e NaN/inf rejeitados: entrada inválida gera 422.
-- Os modelos são carregados uma vez, na inicialização (lifespan). Se as features do `metadata.json` não baterem com o schema, a API nem sobe.
-- Configuração por variáveis de ambiente (`MODEL_DIR`, `MAX_BATCH`) via pydantic-settings.
+- O schema de entrada é gerado a partir de `schema.FEATURES` (os 60 atributos do dataset limpo), então a lista de features existe em um lugar só. Cada modelo usa só as suas.
+- Pydantic com `extra="forbid"` e NaN/inf rejeitados: entrada inválida gera 422. A mensagem de erro não repete a entrada, porque NaN não cabe em JSON.
+- Os modelos são carregados uma vez, quando o uvicorn chama a fábrica `create_app` (`uvicorn nids.serving.api:create_app --factory`). Se um modelo usa atributo fora do schema, ou se classificador e detector estão trocados, a API nem sobe.
+- Configuração por variáveis de ambiente via pydantic-settings: `NIDS_MODEL_DIR` (padrão `models`), `NIDS_CLASSIFIER` (`xgb_temporal`), `NIDS_DETECTOR` (`ae_unseen`) e `NIDS_MAX_BATCH` (1000).
 
 ### 9.4 Replay e dashboard
 
@@ -381,15 +382,16 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | base | numpy, pandas, pyarrow, scikit-learn, xgboost, pydantic, pyyaml, typer | Tudo |
 | train | mlflow, quando houver muitos experimentos | Máquina de desenvolvimento |
 | notebooks | ipykernel, matplotlib, nbclient, nbformat | Notebooks de análise |
-| api | fastapi, uvicorn, pydantic-settings | Imagem da API |
+| api | fastapi, uvicorn, pydantic-settings | Imagem da API (e o `uv sync` padrão, para os testes) |
 | dashboard | streamlit, httpx | Imagem do dashboard |
-| dev | pytest, pytest-cov, httpx, ruff, pre-commit | Desenvolvimento e CI |
+| dev | pytest, pytest-cov, httpx2 (cliente do TestClient), ruff, pre-commit | Desenvolvimento e CI |
 
 **Docker:**
 
-- `docker/api.Dockerfile`: `python:3.12-slim`, build em dois estágios com uv, instala só `base + api` (sem torch nem jupyter), usuário não-root, `HEALTHCHECK` em `/health`.
-- O modelo entra por volume em `/models`, então um modelo novo não exige rebuild. Para uma demo autocontida, um build arg copia o modelo para dentro da imagem.
-- `docker-compose.yml`: `api` sempre; `replay` e `dashboard` no profile `demo` (`docker compose --profile demo up`).
+- `docker/api.Dockerfile`: `python:3.12-slim`, build em dois estágios com uv, instala só `base + api` (sem jupyter nem ferramentas de dev), usuário não-root, `HEALTHCHECK` em `/health`. O NCCL que o XGBoost puxa no Linux (centenas de MB, só serve para várias GPUs) fica de fora; a libgomp, que a imagem slim não traz, entra.
+- O `.dockerignore` é uma lista branca (`pyproject.toml`, `uv.lock`, `README.md`, `src/`): `data/` nunca vai para o contexto do build.
+- O modelo entra por volume em `/models`, então um modelo novo não exige rebuild.
+- `docker-compose.yml`: `api` sempre; `replay` e `dashboard` no profile `demo` (`docker compose --profile demo up`) na etapa 5.
 
 ## 11. Qualidade
 
@@ -401,7 +403,7 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
 | Dados reais | Checagens que exigem o dataset | Marcadas com `@pytest.mark.data`, fora do CI |
 
 - **ruff** para lint e formatação. **pre-commit** com ruff e `check-added-large-files`, que impede commitar um CSV por engano.
-- **CI** (`.github/workflows/ci.yml`) em todo push e PR: `uv sync`, `ruff check`, `ruff format --check`, `pytest -m "not data"` com cobertura, `docker build`.
+- **CI** (`.github/workflows/ci.yml`) em todo push e PR: `uv sync`, `ruff check`, `ruff format --check`, `pytest -m "not data"` com cobertura e, em outro job, `docker build` seguido de um `import xgboost` dentro da imagem (pega biblioteca nativa faltando).
 
 ## 12. Fluxo de trabalho
 
@@ -415,6 +417,9 @@ O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração
   - [0004](adr/0004-porta-de-destino.md): porta de destino fora do modelo por padrão
   - [0005](adr/0005-atributos-redundantes.md): atributos redundantes
   - [0006](adr/0006-negativos-e-duracao-zero.md): valores negativos e fluxos de duração zero
+- Os das etapas seguintes:
+  - [0007](adr/0007-autoencoder-no-scikit-learn.md): autoencoder com o MLPRegressor do scikit-learn
+  - [0008](adr/0008-contrato-da-api.md): contrato da API e veredito combinado
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto

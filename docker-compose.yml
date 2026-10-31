@@ -1,0 +1,12 @@
+# docker compose up --build: sobe a API em http://localhost:8000 com os modelos de models/.
+# Outros modelos: NIDS_CLASSIFIER e NIDS_DETECTOR em environment (padrão: xgb_temporal e ae_unseen).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: nids-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/models:ro
