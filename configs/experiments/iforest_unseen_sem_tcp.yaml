@@ -1,0 +1,10 @@
+# iforest_unseen sem os atributos que dependem do sistema operacional da máquina (hipótese do atalho)
+name: iforest_unseen_sem_tcp
+protocol: unseen
+model: isolation_forest
+params:
+  n_estimators: 200
+exclude_features:
+  - init_win_bytes_forward
+  - init_win_bytes_backward
+  - min_seg_size_forward

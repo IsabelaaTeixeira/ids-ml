@@ -10,7 +10,7 @@ from nids import __version__
 from nids.config import load_data_config, load_experiment_config
 from nids.data.pipeline import run_clean, run_split
 from nids.data.verify import record_checksums, verify_raw
-from nids.models.supervised import run_experiment
+from nids.models.experiment import run_experiment
 
 app = typer.Typer(
     help="IDS com Machine Learning: dados, treino, avaliação e serviço.",
@@ -45,13 +45,20 @@ def train(
     experiment: Annotated[Path, typer.Argument(help="YAML do experimento (configs/experiments/).")],
     config: DataConfigOption = DEFAULT_DATA_CONFIG,
 ) -> None:
-    """Treina um classificador supervisionado e avalia na validação e no teste."""
+    """Treina um classificador ou detector de anomalia e avalia na validação e no teste."""
     cfg = load_data_config(config)
     exp = load_experiment_config(experiment)
     metrics = run_experiment(exp, cfg.paths)
+    if "test" in metrics:
+        typer.echo(
+            f"{exp.name}: macro-F1 {metrics['val']['macro_f1']:.4f} na validação, "
+            f"{metrics['test']['macro_f1']:.4f} no teste"
+        )
+    detection = metrics["detection"]["test"]
     typer.echo(
-        f"{exp.name}: macro-F1 {metrics['val']['macro_f1']:.4f} na validação, "
-        f"{metrics['test']['macro_f1']:.4f} no teste"
+        f"{exp.name}: detecção no teste com o limiar da validação: revocação "
+        f"{detection['recall']:.4f}, FPR {detection['fpr']:.4f} "
+        f"({detection['false_alarms']} alarmes falsos)"
     )
     typer.echo(f"Modelo em {cfg.paths.models / exp.name}")
 

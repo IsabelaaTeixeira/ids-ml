@@ -1,0 +1,9 @@
+# XGBoost no P2: treina com os ataques de terça e quarta e é avaliado, como detector, nos ataques
+# de quinta e sexta, que nunca viu. Rodar: uv run nids train configs/experiments/xgb_unseen.yaml
+name: xgb_unseen
+protocol: unseen
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1

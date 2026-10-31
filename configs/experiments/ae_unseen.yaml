@@ -1,0 +1,12 @@
+# Autoencoder (MLPRegressor, ADR 0007) no P2: aprende a reconstruir o tráfego normal de segunda
+# a quarta; o erro de reconstrução é o score de anomalia.
+# Rodar: uv run nids train configs/experiments/ae_unseen.yaml
+name: ae_unseen
+protocol: unseen
+model: autoencoder
+params:
+  hidden_layer_sizes: [32, 16, 32]
+  batch_size: 1024
+  max_iter: 100
+  early_stopping: true
+  n_iter_no_change: 5

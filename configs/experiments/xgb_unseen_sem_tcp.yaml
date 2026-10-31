@@ -1,0 +1,12 @@
+# xgb_unseen sem os atributos que dependem do sistema operacional da máquina (hipótese do atalho)
+name: xgb_unseen_sem_tcp
+protocol: unseen
+model: xgboost
+params:
+  n_estimators: 300
+  max_depth: 8
+  learning_rate: 0.1
+exclude_features:
+  - init_win_bytes_forward
+  - init_win_bytes_backward
+  - min_seg_size_forward

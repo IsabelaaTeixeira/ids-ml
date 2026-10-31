@@ -1,0 +1,7 @@
+# Isolation Forest no P2: aprende só o tráfego normal de segunda a quarta.
+# Rodar: uv run nids train configs/experiments/iforest_unseen.yaml
+name: iforest_unseen
+protocol: unseen
+model: isolation_forest
+params:
+  n_estimators: 200
