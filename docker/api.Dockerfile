@@ -6,15 +6,16 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 
-# O NCCL serve para treinar em várias GPUs; o XGBoost só o carrega se for usado, e ele
-# ocupa centenas de MB. Dependências antes do código: mudar o código não reinstala tudo.
+# Ficam de fora dois pacotes que a API não usa: o NCCL, que serve para treinar em várias GPUs
+# (o XGBoost só o carrega se for usado), e o PyArrow, que serve para ler Parquet. Juntos, são
+# centenas de MB. Dependências antes do código: mudar o código não reinstala tudo.
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-default-groups --group api --no-install-project \
-    --no-install-package nvidia-nccl-cu13
+    --no-install-package nvidia-nccl-cu13 --no-install-package pyarrow
 COPY README.md ./
 COPY src ./src
 RUN uv sync --locked --no-default-groups --group api --no-editable \
-    --no-install-package nvidia-nccl-cu13
+    --no-install-package nvidia-nccl-cu13 --no-install-package pyarrow
 
 FROM python:3.12-slim
 # O XGBoost precisa da libgomp, que a imagem slim não traz
