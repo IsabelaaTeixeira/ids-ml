@@ -375,7 +375,7 @@ Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
 
 O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração exercita o serviço de verdade. A API da demonstração serve o **XGBoost do P2** com o autoencoder: o XGBoost do P1 treinou com o começo de quinta e sexta, e o replay se recusa a rodar se algum modelo servido não for do protocolo do teste ([ADR 0009](adr/0009-replay-com-modelos-do-p2.md)).
 
-O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas feitas em SQL (`demo/summary.py`), porque no fim são quase um milhão de vereditos. Ele mostra fluxos analisados, revocação, alarmes falsos e alertas até o momento; um gráfico por dia com ataques reais, alertas de ataque e alertas suspeitos por minuto; a tabela de acertos e erros por família verdadeira; e os últimos alertas, com IPs e acerto ou erro. Mostrar os erros junto com os alertas é mais honesto e mais interessante.
+O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas feitas em SQL (`demo/summary.py`), porque no fim são quase um milhão de vereditos. Ele mostra o horário da captura, os fluxos analisados, a revocação, os alarmes falsos e os alertas até o momento; um gráfico por dia com ataques reais, alertas de ataque e alertas suspeitos por minuto; a tabela de acertos e erros por família verdadeira; e os últimos alertas, com IPs e acerto ou erro. Mostrar os erros junto com os alertas é mais honesto e mais interessante. O tema (`.streamlit/config.toml`) usa a fonte IBM Plex e os mesmos tons neutros da paleta dos gráficos, nos temas claro e escuro.
 
 ## 10. Empacotamento
 

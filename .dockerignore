@@ -6,4 +6,5 @@
 !README.md
 !src/
 !dashboard/
+!.streamlit/
 **/__pycache__

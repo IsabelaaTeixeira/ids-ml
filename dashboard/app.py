@@ -38,7 +38,8 @@ def minute_chart(data: pd.DataFrame, colors: list[str]) -> alt.LayerChart:
     columns = {"true_attacks": SERIES[0], "attack": SERIES[1], "suspicious": SERIES[2]}
     wide = data.rename(columns=columns)[SERIES].reset_index()
     long = wide.melt("timestamp", var_name="série", value_name="fluxos")
-    x = alt.X("timestamp:T", title=None, axis=alt.Axis(format="%H:%M"))
+    # Umas 8 marcas em intervalos redondos (30 min numa tarde, 1 h num dia inteiro)
+    x = alt.X("timestamp:T", title=None, axis=alt.Axis(format="%H:%M", tickCount=8))
     color = alt.Color(
         "série:N",
         scale=alt.Scale(domain=SERIES, range=colors),
@@ -68,11 +69,11 @@ def minute_chart(data: pd.DataFrame, colors: list[str]) -> alt.LayerChart:
     return alt.layer(lines, points, rule).properties(height=260)
 
 
-st.set_page_config(page_title="IDS · replay", layout="wide")
-st.title("Replay do teste do P2")
+st.set_page_config(page_title="Monitor de intrusão", layout="wide")
+st.title("Monitor de intrusão")
 st.caption(
-    "Quinta e sexta-feira do CIC-IDS2017 passando pela API, minuto a minuto. O XGBoost do P2 e o "
-    "autoencoder nunca viram esses ataques; o rótulo verdadeiro mostra os acertos e os erros."
+    "Replay do CIC-IDS2017 (quinta e sexta-feira) · XGBoost e autoencoder treinados de segunda a "
+    "quarta"
 )
 
 
@@ -83,25 +84,37 @@ def dashboard() -> None:
     except sqlite3.OperationalError:  # o replay ainda não criou o banco
         stats = None
     if not stats or not stats["flows"]:
-        st.info("Aguardando o replay: rode `nids replay` ou `docker compose --profile demo up`.")
+        st.info("Aguardando o replay (`nids replay`).")
         return
 
-    tiles = st.columns(4)
-    tiles[0].metric("Fluxos analisados", number(stats["flows"]))
-    tiles[1].metric(
+    series = per_minute(DB)
+    tiles = st.columns(5)
+    capture = series.index.max()
+    tiles[0].metric(
+        f"Captura ({capture:%d/%m})",
+        f"{capture:%H:%M}",
+        help="Horário original do último minuto enviado à API",
+        border=True,
+    )
+    tiles[1].metric("Fluxos analisados", number(stats["flows"]), border=True)
+    tiles[2].metric(
         "Ataques detectados",
         percent(stats["recall"]),
-        help=f"{number(stats['detected'])} de {number(stats['attacks'])} fluxos de ataque",
+        help=f"Revocação: {number(stats['detected'])} de {number(stats['attacks'])} ataques",
+        border=True,
     )
-    tiles[2].metric(
+    tiles[3].metric(
         "Alarmes falsos",
         number(stats["false_alarms"]),
-        help=f"{percent(stats['fpr'])} dos fluxos normais",
+        help=(
+            f"{percent(stats['fpr'])} dos fluxos normais. Parte é tráfego de ataque que o "
+            "CIC-IDS2017 rotula como normal: respostas da vítima e a varredura da máquina invadida."
+        ),
+        border=True,
     )
-    tiles[3].metric("Alertas", number(stats["alerts"]))
+    tiles[4].metric("Alertas", number(stats["alerts"]), border=True)
 
     colors = COLORS["dark" if st.context.theme.type == "dark" else "light"]
-    series = per_minute(DB)
     for day, data in series.groupby(series.index.date):
         st.subheader(DAYS.get(str(day), str(day)))
         st.altair_chart(minute_chart(data, colors), theme="streamlit")
@@ -126,13 +139,11 @@ def dashboard() -> None:
             "Ataque": count,
             "Suspeito": count,
             "Normal": count,
-            "Com alerta": st.column_config.NumberColumn(format="percent"),
+            "Com alerta": st.column_config.NumberColumn(
+                format="percent",
+                help="Revocação nas famílias de ataque; taxa de alarmes falsos no BENIGN",
+            ),
         },
-    )
-    st.caption(
-        "Nos ataques, “com alerta” é a revocação; no BENIGN, a taxa de alarmes falsos. Parte "
-        "desses alarmes é tráfego de ataque rotulado como normal: respostas da vítima e a "
-        "varredura feita pela máquina invadida na infiltração (notebook 03)."
     )
 
     st.subheader("Últimos alertas")

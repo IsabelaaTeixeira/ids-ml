@@ -1,0 +1,30 @@
+# Tema do painel da demonstração (dashboard/app.py). As cores neutras são as mesmas da paleta
+# dos gráficos, para o painel e os gráficos conversarem; a fonte é a IBM Plex.
+
+[client]
+toolbarMode = "minimal"  # sem o botão Deploy e o menu de desenvolvimento
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+font = "'IBM Plex Sans':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap, sans-serif"
+codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap, monospace"
+baseFontSize = 15
+baseRadius = "0.3rem"
+headingFontSizes = ["1.6rem", "1.3rem", "1.05rem"]
+headingFontWeights = [600, 600, 600]
+primaryColor = "#2a78d6"
+showWidgetBorder = true
+
+[theme.light]
+backgroundColor = "#f9f9f7"
+secondaryBackgroundColor = "#f0efec"
+textColor = "#0b0b0b"
+borderColor = "#e1e0d9"
+
+[theme.dark]
+backgroundColor = "#0d0d0d"
+secondaryBackgroundColor = "#1a1a19"
+textColor = "#f0efec"
+borderColor = "#2c2c2a"
