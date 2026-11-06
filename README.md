@@ -1,122 +1,172 @@
-# IDS com Machine Learning
+# Network intrusion detection with machine learning
 
-Detecção de intrusão em fluxos de rede com o dataset CIC-IDS2017. O projeto compara um classificador supervisionado, bom em ataques conhecidos, com detectores de anomalia, que tentam pegar ataques nunca vistos, e empacota o resultado como uma API em Docker.
+[![CI](https://github.com/IsabelaaTeixeira/ids-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/IsabelaaTeixeira/ids-ml/actions/workflows/ci.yml)
+· [Versão em português](README.pt-BR.md)
 
-> Em construção. Etapa atual: 5, demonstração com replay e painel. O plano completo está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+An end-to-end intrusion detection system on the network flows of
+[CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html): careful data cleaning, an evaluation
+without leakage, a comparison between a supervised classifier and anomaly detectors on attacks never
+seen in training, and the result served by an API in Docker, with a live demo.
 
-## Como rodar
+![Dashboard during the replay of Friday afternoon](docs/demo.gif)
 
-Pré-requisitos: [Git](https://git-scm.com/) e [uv](https://docs.astral.sh/uv/).
+## The question
 
-```bash
-uv sync                      # cria o ambiente e instala as dependências
-uv run pre-commit install    # ativa as checagens antes de cada commit
-uv run pytest                # roda os testes
-uv run nids --help           # lista os comandos do projeto
+> How much does a supervised model lose on attacks it has never seen, and how much of that can an
+> anomaly detector recover, at what cost in false positives?
+
+CIC-IDS2017 has a different set of attacks on each day of capture. Training on Monday to Wednesday
+and testing on Thursday and Friday puts in the test only attack families that the models never saw.
+
+## Key results
+
+Recall on the Thursday and Friday attacks, with every model's threshold set to 1 % false positives
+on the validation set, before looking at the test:
+
+| Family (test flows) | XGBoost that knows the family | XGBoost | Isolation Forest | Autoencoder | XGBoost + autoencoder |
+|---|---|---|---|---|---|
+| PortScan (90,255) | 0.999 | 0.010 | 0.003 | 0.092 | 0.100 |
+| DDoS (128,012) | 0.999 | 0.639 | 0.000 | 0.254 | 0.703 |
+| Bot (1,953) | 0.000 | 0.000 | 0.008 | 0.003 | 0.003 |
+| WebAttack (2,143) | 0.991 | 0.933 | 0.000 | 0.000 | 0.933 |
+| Infiltration (36) | 0.000 | 0.000 | 0.750 | 0.722 | 0.722 |
+| **All five** | **0.990** | **0.381** | **0.001** | **0.184** | **0.454** |
+
+The first column is the ceiling: an XGBoost trained on the early part of every day, which knows
+these families. Infiltration stays out of its training (36 flows are too few), and its Bot flows
+change behavior after the training period.
+
+- **A random split hides the real difficulty.** The same XGBoost scores 0.957 macro-F1 when the
+  data is shuffled and 0.801 when the split respects time: 15.6 points of inflation.
+- **On unseen attacks, the classifier drops from 99.0 % to 38.1 % recall.** What it still catches
+  resembles its training data: DDoS and web attacks hit the same server and port as Wednesday's DoS.
+- **Anomaly detectors recover little at that operating point, but they are the only ones that catch
+  the infiltration.** The autoencoder ranks attacks well (ROC-AUC 0.96 to 0.99 on three families)
+  and would reach 63.6 % at 2 % false positives, but that threshold cannot be chosen without
+  examples of the attacks.
+- **Together, classifier and autoencoder catch 45.4 %.** At a realistic base rate (1,000 attacks
+  per million normal flows), that would still mean about 42 false alarms for each true one.
+- **Much of the "error" is in the labels.** The victim's responses to the attacker and an internal
+  port scan by the infiltrated host are labeled as normal traffic. Without them, the false-positive
+  rate on the test is about 1 %, as on validation.
+
+## What was wrong with the data
+
+- **A 12-hour clock without AM/PM in every file.** Without the fix, 1.47 million timestamps (52 %)
+  would be out of order. The corrected times match the official attack schedule.
+- **Duplicates:** 332,674 rows, removed before any split. They were 43 % of the PortScan flows and
+  45 % of the SSH-Patator ones.
+- **Shortcuts.** The destination port alone reaches 0.33 macro-F1, so it stays out of the model.
+  All attacks are TCP. The initial TCP window identifies the attacking machine: without it,
+  macro-F1 falls from 0.957 to 0.690.
+- **Smaller fixes:** 288,602 empty lines, 35 integer overflows and 10 redundant features (70 → 60).
+
+## How it is built
+
+```mermaid
+flowchart LR
+    raw[(CSVs)] --> clean[clean] --> split["split: random, temporal, by day"]
+    split --> train[train] --> model[(model + metadata)]
+    model --> api["FastAPI: POST /predict"]
+    replay[replay] -->|HTTP| api
+    replay --> db[(SQLite)] --> dashboard[Streamlit dashboard]
 ```
 
-Para baixar e processar o dataset, veja [data/README.md](data/README.md). Para abrir os notebooks de
-análise em `notebooks/`, instale também o grupo de dependências deles: `uv sync --group notebooks`.
+- **Data pipeline** (`nids data verify|clean|split`): checksums of the raw files, small tested
+  cleaning rules, a quality report and invariants checked before writing.
+- **Three evaluation protocols:** random (kept only as a counterexample), temporal (known attacks in
+  the future) and by day (attacks never seen).
+- **Models:** XGBoost and Random Forest; Isolation Forest and an autoencoder trained only on normal
+  traffic. Each model is saved with its features, classes, threshold and library versions.
+- **Service:** a FastAPI API gives each flow a verdict (`attack` with the family, `suspicious` or
+  `benign`). With real test flows, it reproduces the offline evaluation counts exactly.
+- **Engineering:** locked environment (uv), validated configuration, 83 tests written at agreed
+  boundaries, CI with lint, tests and Docker builds, and 9 architecture decision records.
 
-Com os dados processados, cada experimento de `configs/experiments/` treina um classificador ou
-detector de anomalia, fixa o limiar de alarme em 1 % de falsos positivos na validação, avalia no
-teste e grava o modelo em `models/` e as métricas em `reports/supervised.json` ou
-`reports/anomaly.json`:
+## Run it
+
+Requirements: [Git](https://git-scm.com/), [uv](https://docs.astral.sh/uv/) and, for the API and
+the demo, [Docker](https://docs.docker.com/get-started/get-docker/).
 
 ```bash
-uv run nids train configs/experiments/xgb_temporal.yaml
-uv run nids train configs/experiments/iforest_unseen.yaml
+uv sync                          # environment from uv.lock
+uv run pytest -m "not data"      # tests that do not need the dataset
 ```
 
-## API
-
-Com `xgb_temporal` e `ae_unseen` treinados em `models/`, a API sobe com [Docker](https://docs.docker.com/get-started/get-docker/):
+The dataset is downloaded by hand; see [data/README.md](data/README.md). Then:
 
 ```bash
-docker compose up --build    # http://localhost:8000/docs mostra as rotas
+uv run nids data verify && uv run nids data clean && uv run nids data split
+uv run nids train configs/experiments/xgb_temporal.yaml   # one YAML per experiment
+uv run nids train configs/experiments/ae_unseen.yaml
 ```
 
-Sem Docker, use `uv run uvicorn nids.serving.api:create_app --factory`.
-
-`POST /predict` recebe `{"flows": [...]}`, com até 1000 fluxos. Cada fluxo traz os 60 atributos do
-dataset limpo (os de `schema.FEATURES`). A resposta tem um veredito por fluxo:
-
-- `attack`, com a família, quando o classificador reconhece um ataque conhecido;
-- `suspicious`, quando ele não reconhece, mas o detector de anomalia dispara;
-- `benign`, nos demais casos.
-
-Os limiares são os escolhidos na validação ([ADR 0008](docs/adr/0008-contrato-da-api.md)).
-`GET /model` mostra os modelos carregados e os limiares, e `GET /health` confirma que a API está no ar.
-
-### Testando com fluxos reais
-
-[docs/exemplo_predict.json](docs/exemplo_predict.json) traz três fluxos do teste do P2: um DDoS,
-um da infiltração e um normal. Em http://localhost:8000/docs, abra `POST /predict`, clique em
-**Try it out**, cole o conteúdo do arquivo e clique em **Execute**. Pelo terminal:
+### API
 
 ```bash
+docker compose up --build        # http://localhost:8000/docs
 curl -X POST http://localhost:8000/predict -H "content-type: application/json" -d @docs/exemplo_predict.json
 ```
 
-No PowerShell, use `curl.exe` em vez de `curl`. A resposta traz um resultado por fluxo, nesta ordem:
+`POST /predict` takes up to 1,000 flows, each with the 60 features of the cleaned dataset, and
+returns one verdict per flow. [docs/exemplo_predict.json](docs/exemplo_predict.json) holds three real
+test flows (a DDoS, an infiltration and a normal one) that get the three verdicts. On PowerShell,
+use `curl.exe`. Without Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
 
-| Fluxo | `verdict` | `family` | `attack_probability` | `anomaly_score` |
-|---|---|---|---|---|
-| DDoS | `attack` | DDoS | 0,9999998 | 0,044 |
-| Infiltration | `suspicious` | | 0,00001 | 0,101 |
-| Normal | `benign` | | 0,00002 | 0,067 |
-
-- `attack_probability` é a probabilidade de ataque dada pelo XGBoost. Acima de 0,34, o fluxo é
-  `attack`, com a família.
-- `anomaly_score` mede o quanto o fluxo foge do tráfego normal, segundo o autoencoder. Acima de
-  0,072, o fluxo é `suspicious`.
-
-O XGBoost reconhece o DDoS, que viu no treino. A infiltração ele não conhece, mas o autoencoder a
-acha estranha. Os limiares exatos estão em `GET /model`.
-
-## Demonstração
-
-![Painel durante o replay da tarde de sexta-feira](docs/demo.gif)
-
-O replay manda à API o teste do P2 (quinta e sexta-feira, quase 1 milhão de fluxos) em ordem
-cronológica, um minuto de captura por segundo. Cada veredito vai para um banco ao lado do rótulo
-verdadeiro, e um painel mostra ao vivo os alertas, os acertos e os erros:
+### Live demo
 
 ```bash
-docker compose --profile demo up --build    # painel em http://localhost:8501
+docker compose --profile demo up --build    # dashboard at http://localhost:8501
 ```
 
-O replay inteiro leva cerca de 20 minutos. Para ver só a tarde de sexta, com o PortScan e o DDoS:
+The replay sends the Thursday and Friday test (nearly 1 million flows) to the API in time order, one
+minute of capture per second, and the dashboard shows alerts, hits and misses as they happen. The
+full replay takes about 20 minutes and ends at the same 45.4 % as the offline evaluation. The demo
+API serves the XGBoost trained on Monday to Wednesday: the default one was trained on the early part
+of Thursday and Friday, and the replay refuses to run with models that may have seen its test data.
+
+To watch only Friday afternoon (PortScan and DDoS):
 
 ```bash
 docker compose --profile demo run --rm replay nids replay --api=http://api-demo:8000 \
   --file=/data/processed/unseen/test.parquet --db=/demo/replay.db --start="2017-07-07 13:00"
 ```
 
-No Git Bash do Windows, comece o comando com `MSYS_NO_PATHCONV=1`: sem isso, ele troca
-`/data/...` e `/demo/...` por caminhos do Windows antes de chegarem ao container.
+On Git Bash for Windows, start the command with `MSYS_NO_PATHCONV=1`. Without Docker, run in three
+terminals: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_app --factory`,
+`uv run nids replay` and `uv run streamlit run dashboard/app.py`.
 
-Nessa demonstração, a API serve o XGBoost **do P2**, que nunca viu esses ataques. O do P1, da API
-padrão, treinou com o começo de quinta e sexta, e o replay se recusa a usar modelos que podem ter
-visto o teste ([ADR 0009](docs/adr/0009-replay-com-modelos-do-p2.md)). Ao fim, o painel mostra
-45,4 % dos ataques detectados, o mesmo resultado da combinação de classificador e detector na
-avaliação offline, e 70.953 alarmes falsos. Cerca de 80 % desses alarmes são tráfego de ataque que
-o conjunto rotula como normal: as respostas da vítima e uma varredura feita pela máquina invadida.
+## Limitations
 
-Sem Docker, rode em três terminais:
-`NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_app --factory`,
-`uv run nids replay` e `uv run streamlit run dashboard/app.py`.
+- The dataset was generated in a lab in 2017, with synthetic normal traffic, and its original labels
+  have known errors. They were kept as published, and the results are reported with and without the
+  mislabeled flows.
+- The models only apply to flows described by CICFlowMeter features. Zeek or Suricata would need a
+  mapping or retraining.
+- All attacks in the dataset are TCP, so a model trained here tends to call UDP traffic normal.
+- The anomaly threshold is chosen without examples of the attacks, and some families are tiny
+  (36 infiltration flows, 11 Heartbleed).
+- The API has no authentication or rate limit, and the demo replays flows extracted after the
+  capture, so alert latency was not measured.
 
-## Estrutura
+## Documentation (in Portuguese)
 
-| Pasta | Conteúdo |
+- [docs/ARQUITETURA.md](docs/ARQUITETURA.md): architecture, protocols and roadmap.
+- [docs/adr/](docs/adr/): the decisions, one per record.
+- [notebooks/](notebooks/): exploratory analysis, supervised models and anomaly detection.
+
+## Repository layout
+
+| Folder | Contents |
 |---|---|
-| `src/nids/` | Código do projeto: dados, modelos, avaliação, API e replay |
-| `dashboard/` | Painel da demonstração (Streamlit) |
-| `docker/` | Imagens da API e da demonstração |
-| `tests/` | Testes automatizados |
-| `data/` | Dados brutos e processados, fora do git (veja [data/README.md](data/README.md)) |
-| `configs/` | Configuração dos dados e dos experimentos |
-| `notebooks/` | Análises (exploratória e resultados) |
-| `reports/` | Relatórios de qualidade, divisões, métricas e figuras |
-| `docs/` | Arquitetura e registro de decisões (`docs/adr/`) |
+| `src/nids/` | Data, models, evaluation, API and replay |
+| `dashboard/` | Demo dashboard (Streamlit) |
+| `docker/` | API and demo images |
+| `tests/` | Automated tests |
+| `configs/` | Data and experiment configuration |
+| `notebooks/` | Analyses |
+| `reports/` | Data quality, splits, metrics and figures |
+| `docs/` | Architecture, decision records and examples |
+| `data/` | Raw and processed data, outside git ([data/README.md](data/README.md)) |
+
+Author: Isabela Teixeira e Cerqueira.

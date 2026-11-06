@@ -1,6 +1,6 @@
 # Arquitetura do projeto: IDS com Machine Learning
 
-> Status: proposta (28/10/2026). Documento vivo. Decisões grandes viram ADRs em `docs/adr/`.
+> Status: implementado, etapas 0 a 6 (proposto em 28/10/2026, fechado em 05/11/2026). Decisões grandes viraram ADRs em `docs/adr/`. Para uma visão rápida do projeto e dos resultados, veja o [README](../README.pt-BR.md).
 
 ## 1. Objetivo
 
@@ -70,7 +70,8 @@ Princípios que guiam todo o resto:
 
 ```
 .
-├── README.md                  # vitrine: problema, resultados, como rodar
+├── README.md                  # vitrine em inglês: problema, resultados, como rodar
+├── README.pt-BR.md            # a mesma vitrine em português
 ├── pyproject.toml             # dependências por grupo + config de ruff e pytest
 ├── uv.lock
 ├── .pre-commit-config.yaml
@@ -391,7 +392,7 @@ O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas fei
 
 **Docker:**
 
-- `docker/api.Dockerfile`: `python:3.12-slim`, build em dois estágios com uv, instala só `base + api` (sem jupyter nem ferramentas de dev), usuário não-root, `HEALTHCHECK` em `/health`. O NCCL que o XGBoost puxa no Linux (centenas de MB, só serve para várias GPUs) fica de fora; a libgomp, que a imagem slim não traz, entra.
+- `docker/api.Dockerfile`: `python:3.12-slim`, build em dois estágios com uv, instala só `base + api` (sem jupyter nem ferramentas de dev), usuário não-root, `HEALTHCHECK` em `/health`. Ficam de fora o NCCL que o XGBoost puxa no Linux (centenas de MB, só serve para várias GPUs) e o PyArrow (só serve para ler Parquet, o que a API não faz); a libgomp, que a imagem slim não traz, entra. A imagem fica com cerca de 630 MB descompactada.
 - O `.dockerignore` é uma lista branca (`pyproject.toml`, `uv.lock`, `README.md`, `src/`): `data/` nunca vai para o contexto do build.
 - O modelo entra por volume em `/models`, então um modelo novo não exige rebuild.
 - `docker/demo.Dockerfile`: o mesmo desenho, com o grupo `demo` e o `dashboard/`; serve ao replay e ao painel.
