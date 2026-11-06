@@ -84,6 +84,7 @@ Princípios que guiam todo o resto:
 ├── configs/
 │   ├── data.yaml              # caminhos, correção do horário, parâmetros dos splits
 │   ├── raw_files.sha256       # checksums dos CSVs brutos (nids data verify --record)
+│   ├── data_improved.yaml     # o mesmo pipeline no CIC-IDS2017 corrigido (ADR 0010)
 │   └── experiments/           # um YAML por experimento
 │       ├── xgb_temporal.yaml
 │       └── iforest_unseen.yaml
@@ -101,7 +102,8 @@ Princípios que guiam todo o resto:
 ├── notebooks/                 # exploração e apresentação; importam de src/
 │   ├── 01_eda.ipynb           # análise exploratória e qualidade dos dados
 │   ├── 02_supervisionado.ipynb
-│   └── 03_anomalia.ipynb
+│   ├── 03_anomalia.ipynb
+│   └── 04_conjunto_corrigido.ipynb
 ├── src/nids/
 │   ├── cli.py                 # nids data verify|clean|split, train, evaluate, serve, replay
 │   ├── config.py              # YAML -> objetos validados (Pydantic)
@@ -109,6 +111,7 @@ Princípios que guiam todo o resto:
 │   ├── data/
 │   │   ├── verify.py          # confere os CSVs brutos contra os checksums
 │   │   ├── load.py            # leitura dos CSVs com tipos corretos
+│   │   ├── improved.py        # leitura do conjunto corrigido no formato do original
 │   │   ├── clean.py           # regras de limpeza (seção 5.3)
 │   │   ├── validate.py        # invariantes checadas ao fim da limpeza
 │   │   ├── split.py           # protocolos P0, P1, P2
@@ -426,6 +429,7 @@ O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas fei
   - [0007](adr/0007-autoencoder-no-scikit-learn.md): autoencoder com o MLPRegressor do scikit-learn
   - [0008](adr/0008-contrato-da-api.md): contrato da API e veredito combinado
   - [0009](adr/0009-replay-com-modelos-do-p2.md): a demonstração reproduz o teste do P2 com os modelos do P2
+  - [0010](adr/0010-conjunto-corrigido.md): repetir os experimentos no CIC-IDS2017 corrigido, pelo mesmo pipeline
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto

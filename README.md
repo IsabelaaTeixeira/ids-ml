@@ -36,8 +36,10 @@ The first column is the ceiling: an XGBoost trained on the early part of every d
 these families. Infiltration stays out of its training (36 flows are too few), and its Bot flows
 change behavior after the training period.
 
-- **A random split hides the real difficulty.** The same XGBoost scores 0.957 macro-F1 when the
-  data is shuffled and 0.801 when the split respects time: 15.6 points of inflation.
+- **A random split hides the data's problems.** The same XGBoost scores 0.957 macro-F1 when the
+  data is shuffled and 0.801 when the split respects time. On the corrected dataset (below), the
+  gap disappears: it came from labeling errors that the random split spreads across training and
+  test.
 - **On unseen attacks, the classifier drops from 99.0 % to 38.1 % recall.** What it still catches
   resembles its training data: DDoS and web attacks hit the same server and port as Wednesday's DoS.
 - **Anomaly detectors recover little at that operating point, but they are the only ones that catch
@@ -49,6 +51,31 @@ change behavior after the training period.
 - **Much of the "error" is in the labels.** The victim's responses to the attacker and an internal
   port scan by the infiltrated host are labeled as normal traffic. Without them, the false-positive
   rate on the test is about 1 %, as on validation.
+
+### On the corrected dataset
+
+Engelen et al. rebuilt CIC-IDS2017 from the packet captures, with a fixed flow extractor and new
+labels ([their page](https://intrusion-detection.distrinet-research.be/CNS2022/)). Running the same
+pipeline and models on that version changes the picture
+([notebook 04](notebooks/04_conjunto_corrigido.ipynb)):
+
+| | Original | Corrected |
+|---|---|---|
+| XGBoost macro-F1, random split | 0.957 | 0.997 |
+| XGBoost macro-F1, temporal split | 0.801 | 0.997 |
+| Unseen attacks, XGBoost recall | 0.381 | 0.435 |
+| Unseen attacks, autoencoder recall | 0.184 | 0.609 |
+| Unseen attacks, XGBoost + autoencoder | 0.454 | 0.994 |
+| Test false-positive rate (target 1 %) | 2.1 % to 8.4 % | 1.5 % to 1.7 % |
+
+- **The gap between random and temporal splits disappears.** The temporal split was exposing errors
+  in the data, not a harder problem: the Bot and DDoS flows that "failed" were mislabeled.
+- **With clean labels and flows, anomaly detection works.** The port scans that slipped through
+  become 99 % detectable, and classifier plus autoencoder catch 99.4 % of the unseen attacks. The
+  pessimistic result on the original data was largely an artifact of the dataset. Bot traffic is
+  still missed, and 3 % false positives is still a lot of alarms at a realistic base rate.
+- **Data quality barely shows on a random split** (0.957 against 0.997), which is how most published
+  results are measured. It changes the conclusion on the protocols that measure generalization.
 
 ## What was wrong with the data
 
@@ -101,6 +128,10 @@ uv run nids train configs/experiments/xgb_temporal.yaml   # one YAML per experim
 uv run nids train configs/experiments/ae_unseen.yaml
 ```
 
+To repeat everything on the corrected dataset, extract `CICIDS2017_improved.zip` (from the
+authors' page) into `data/external/cicids2017_improved/` and add
+`--config configs/data_improved.yaml` to the data and train commands. Results go to separate folders.
+
 ### API
 
 ```bash
@@ -139,8 +170,8 @@ terminals: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
 ## Limitations
 
 - The dataset was generated in a lab in 2017, with synthetic normal traffic, and its original labels
-  have known errors. They were kept as published, and the results are reported with and without the
-  mislabeled flows.
+  have known errors. The main experiments were repeated on the corrected version, but its
+  differences mix new labels and differently built flows, and the two effects cannot be separated.
 - The models only apply to flows described by CICFlowMeter features. Zeek or Suricata would need a
   mapping or retraining.
 - All attacks in the dataset are TCP, so a model trained here tends to call UDP traffic normal.

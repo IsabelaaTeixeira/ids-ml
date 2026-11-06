@@ -1,0 +1,228 @@
+{
+  "rows_raw": 2099976,
+  "rows_clean": 1834744,
+  "steps": [
+    {
+      "step": "drop_empty_rows",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {}
+    },
+    {
+      "step": "normalize_labels",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {
+        "renamed": {
+          "DoS Slowloris": "DoS slowloris",
+          "Web Attack - SQL Injection": "Web Attack - Sql Injection",
+          "Portscan": "PortScan"
+        }
+      }
+    },
+    {
+      "step": "drop_columns",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {
+        "flow_id": {
+          "reason": "redundante: junta IPs, portas e protocolo",
+          "distinct_values": 1084507
+        },
+        "fwd_header_length_1": {
+          "reason": "cópia de fwd_header_length",
+          "distinct_values": 3678
+        },
+        "bwd_psh_flags": {
+          "reason": "constante",
+          "distinct_values": 531
+        },
+        "bwd_urg_flags": {
+          "reason": "constante",
+          "distinct_values": 2
+        },
+        "fwd_avg_bytes_bulk": {
+          "reason": "constante",
+          "distinct_values": 4569
+        },
+        "fwd_avg_packets_bulk": {
+          "reason": "constante",
+          "distinct_values": 98
+        },
+        "fwd_avg_bulk_rate": {
+          "reason": "constante",
+          "distinct_values": 27737
+        },
+        "bwd_avg_bytes_bulk": {
+          "reason": "constante",
+          "distinct_values": 45451
+        },
+        "bwd_avg_packets_bulk": {
+          "reason": "constante",
+          "distinct_values": 822
+        },
+        "bwd_avg_bulk_rate": {
+          "reason": "constante",
+          "distinct_values": 150399
+        },
+        "subflow_fwd_packets": {
+          "reason": "cópia de total_fwd_packets",
+          "distinct_values": 2
+        },
+        "subflow_bwd_packets": {
+          "reason": "cópia de total_backward_packets",
+          "distinct_values": 2
+        },
+        "subflow_fwd_bytes": {
+          "reason": "cópia de total_length_of_fwd_packets",
+          "distinct_values": 983
+        },
+        "subflow_bwd_bytes": {
+          "reason": "cópia de total_length_of_bwd_packets",
+          "distinct_values": 1600
+        },
+        "avg_fwd_segment_size": {
+          "reason": "cópia de fwd_packet_length_mean",
+          "distinct_values": 84651
+        },
+        "avg_bwd_segment_size": {
+          "reason": "cópia de bwd_packet_length_mean",
+          "distinct_values": 132807
+        },
+        "syn_flag_count": {
+          "reason": "cópia de fwd_psh_flags",
+          "distinct_values": 19
+        },
+        "cwe_flag_count": {
+          "reason": "cópia de fwd_urg_flags",
+          "distinct_values": 9
+        },
+        "ece_flag_count": {
+          "reason": "cópia de rst_flag_count",
+          "distinct_values": 5
+        },
+        "packet_length_variance": {
+          "reason": "quadrado de packet_length_std",
+          "distinct_values": 366834
+        }
+      }
+    },
+    {
+      "step": "parse_timestamps",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {
+        "with_seconds": 2099976,
+        "without_seconds": 0,
+        "shifted_12h": 0,
+        "unparsed": 0,
+        "wrong_date": 0
+      }
+    },
+    {
+      "step": "clip_negative_times",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {
+        "clipped": {}
+      }
+    },
+    {
+      "step": "fill_instant_rates",
+      "rows_before": 2099976,
+      "rows_after": 2099976,
+      "removed": 0,
+      "details": {
+        "instant_flows": 5
+      }
+    },
+    {
+      "step": "drop_header_overflow",
+      "rows_before": 2099976,
+      "rows_after": 2099383,
+      "removed": 593,
+      "details": {}
+    },
+    {
+      "step": "drop_missing_values",
+      "rows_before": 2099383,
+      "rows_after": 2099383,
+      "removed": 0,
+      "details": {
+        "infinite": {},
+        "missing": {}
+      }
+    },
+    {
+      "step": "drop_duplicates",
+      "rows_before": 2099383,
+      "rows_after": 1834744,
+      "removed": 264639,
+      "details": {
+        "exact": 264623,
+        "exact_by_label": {
+          "BENIGN": 160804,
+          "PortScan": 103402,
+          "DoS slowloris": 406,
+          "DoS Slowhttptest": 11
+        },
+        "conflicting": 16,
+        "conflicting_by_label": {
+          "BENIGN": 8,
+          "PortScan": 8
+        }
+      }
+    },
+    {
+      "step": "report_constant_features",
+      "rows_before": 1834744,
+      "rows_after": 1834744,
+      "removed": 0,
+      "details": {
+        "constant_features": []
+      }
+    },
+    {
+      "step": "report_negative_values",
+      "rows_before": 1834744,
+      "rows_after": 1834744,
+      "removed": 0,
+      "details": {
+        "negative_values": {}
+      }
+    }
+  ],
+  "labels": {
+    "BENIGN": 1433148,
+    "DoS Hulk": 158468,
+    "PortScan": 127423,
+    "DDoS": 95144,
+    "DoS GoldenEye": 7567,
+    "FTP-Patator": 3972,
+    "DoS slowloris": 3453,
+    "SSH-Patator": 2961,
+    "DoS Slowhttptest": 1729,
+    "Bot": 736,
+    "Web Attack - Brute Force": 73,
+    "Infiltration": 31,
+    "Web Attack - XSS": 18,
+    "Web Attack - Sql Injection": 13,
+    "Heartbleed": 8
+  },
+  "families": {
+    "BENIGN": 1433148,
+    "DoS": 171217,
+    "PortScan": 127423,
+    "DDoS": 95144,
+    "BruteForce": 6933,
+    "Bot": 736,
+    "WebAttack": 104,
+    "Infiltration": 31,
+    "Heartbleed": 8
+  }
+}
