@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && mkdir /demo && chown nids /demo
 COPY --from=build /app/.venv /app/.venv
 COPY dashboard /app/dashboard
+COPY .streamlit /app/.streamlit
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" NIDS_DEMO_DB=/demo/replay.db
 USER nids
