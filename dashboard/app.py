@@ -44,17 +44,21 @@ def minute_chart(data: pd.DataFrame, colors: list[str]) -> alt.LayerChart:
         scale=alt.Scale(domain=SERIES, range=colors),
         legend=alt.Legend(orient="top", title=None),
     )
-    hover = alt.selection_point(nearest=True, on="pointerover", fields=["timestamp"], empty=False)
-    lines = (
-        alt.Chart(long)
-        .mark_line(strokeWidth=2)
-        .encode(x=x, y=alt.Y("fluxos:Q", title="fluxos por minuto"), color=color)
+    # O Vega formata milhares com vírgula; o painel usa ponto, como no resto da página
+    y = alt.Y(
+        "fluxos:Q",
+        title="fluxos por minuto",
+        axis=alt.Axis(labelExpr="replace(format(datum.value, ','), regexp(',', 'g'), '.')"),
     )
+    hover = alt.selection_point(nearest=True, on="pointerover", fields=["timestamp"], empty=False)
+    lines = alt.Chart(long).mark_line(strokeWidth=2).encode(x=x, y=y, color=color)
     points = lines.mark_point(size=64, filled=True).encode(
         opacity=alt.condition(hover, alt.value(1), alt.value(0))
     )
+    for series in SERIES:
+        wide[f"{series} (texto)"] = wide[series].map(number)
     tooltip = [alt.Tooltip("timestamp:T", title="minuto", format="%H:%M")]
-    tooltip += [alt.Tooltip(f"{series}:Q", format="d") for series in SERIES]
+    tooltip += [alt.Tooltip(f"{series} (texto):N", title=series) for series in SERIES]
     rule = (
         alt.Chart(wide)
         .mark_rule(color=MUTED)
