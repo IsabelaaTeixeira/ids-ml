@@ -9,6 +9,7 @@ import pandas as pd
 
 from nids.config import DataConfig
 from nids.data.clean import clean
+from nids.data.improved import load_improved
 from nids.data.load import load_raw
 from nids.data.split import PARTS, PROTOCOLS, make_split, split_summary
 from nids.data.validate import validate_clean
@@ -20,7 +21,7 @@ CLEAN_FILE = "flows.parquet"
 
 def run_clean(config: DataConfig) -> dict[str, Any]:
     """raw/*.csv -> interim/flows.parquet + reports/data_quality.json."""
-    raw = load_raw(config.paths.raw)
+    raw = (load_improved if config.source == "improved" else load_raw)(config.paths.raw)
     log.info("Limpando %d linhas", len(raw))
     df, report = clean(raw, first_capture_hour=config.timestamp.first_capture_hour)
     del raw

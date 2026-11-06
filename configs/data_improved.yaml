@@ -1,0 +1,28 @@
+# CIC-IDS2017 corrigido por Engelen et al. (ADR 0010): o mesmo pipeline, com pastas próprias,
+# para os resultados ficarem lado a lado com os do conjunto original.
+# Download: https://intrusion-detection.distrinet-research.be/CNS2022/Dataset_Download.html
+# (CICIDS2017_improved.zip, extraído em data/external/cicids2017_improved/)
+
+source: improved
+
+paths:
+  raw: data/external/cicids2017_improved
+  interim: data/improved/interim
+  processed: data/improved/processed
+  reports: reports/improved
+  # Gerado por `nids data verify --record --config configs/data_improved.yaml`
+  checksums: configs/improved_files.sha256
+  models: models/improved
+
+timestamp:
+  # Os horários vêm em UTC e são convertidos para o horário local na leitura; nenhum fica
+  # antes das 8h, então a correção do relógio de 12h não muda nada aqui
+  first_capture_hour: 8
+
+split:
+  seed: 42
+  fractions: [0.6, 0.2, 0.2]
+  unseen:
+    train_days: [monday, tuesday, wednesday]
+    test_days: [thursday, friday]
+    val_fraction: 0.2
