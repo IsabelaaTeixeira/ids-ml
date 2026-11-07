@@ -103,7 +103,8 @@ Princípios que guiam todo o resto:
 │   ├── 01_eda.ipynb           # análise exploratória e qualidade dos dados
 │   ├── 02_supervisionado.ipynb
 │   ├── 03_anomalia.ipynb
-│   └── 04_conjunto_corrigido.ipynb
+│   ├── 04_conjunto_corrigido.ipynb
+│   └── 05_outra_rede.ipynb
 ├── src/nids/
 │   ├── cli.py                 # nids data verify|clean|split, train, evaluate, serve, replay
 │   ├── config.py              # YAML -> objetos validados (Pydantic)
@@ -112,6 +113,7 @@ Princípios que guiam todo o resto:
 │   │   ├── verify.py          # confere os CSVs brutos contra os checksums
 │   │   ├── load.py            # leitura dos CSVs com tipos corretos
 │   │   ├── improved.py        # leitura do conjunto corrigido no formato do original
+│   │   ├── cse2018.py         # leitura do CSE-CIC-IDS2018 corrigido, em pedaços (ADR 0011)
 │   │   ├── clean.py           # regras de limpeza (seção 5.3)
 │   │   ├── validate.py        # invariantes checadas ao fim da limpeza
 │   │   ├── split.py           # protocolos P0, P1, P2
@@ -122,6 +124,7 @@ Princípios que guiam todo o resto:
 │   │   ├── experiment.py      # treino, limiar e avaliação de um YAML
 │   │   ├── supervised.py      # XGBoost, Random Forest
 │   │   ├── anomaly.py         # Isolation Forest, Autoencoder
+│   │   ├── external.py        # pontuação de um conjunto externo, em pedaços (nids score)
 │   │   └── registry.py        # salvar/carregar artefato + metadata
 │   ├── evaluation/
 │   │   ├── metrics.py
@@ -430,6 +433,7 @@ O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas fei
   - [0008](adr/0008-contrato-da-api.md): contrato da API e veredito combinado
   - [0009](adr/0009-replay-com-modelos-do-p2.md): a demonstração reproduz o teste do P2 com os modelos do P2
   - [0010](adr/0010-conjunto-corrigido.md): repetir os experimentos no CIC-IDS2017 corrigido, pelo mesmo pipeline
+  - [0011](adr/0011-outra-rede.md): testar os modelos do 2017 corrigido no CSE-CIC-IDS2018 corrigido
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto

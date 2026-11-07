@@ -81,6 +81,29 @@ O mesmo pipeline e os mesmos modelos nessa versão mudam o quadro
   a maioria dos resultados publicados é medida. Ela muda a conclusão nos protocolos que medem
   generalização.
 
+### Em outra rede
+
+Os modelos treinados no CIC-IDS2017 corrigido foram levados para o **CSE-CIC-IDS2018** corrigido:
+mesmo laboratório e mesmo extrator de fluxos, mas outras máquinas, numa rede na AWS, com 63 milhões
+de fluxos ([notebook 05](notebooks/05_outra_rede.ipynb)).
+
+| | Limiar de 2017 | Limiar recalibrado com um dia normal de 2018 |
+|---|---|---|
+| Taxa de falsos positivos | 2,9 % a 10,7 % | 0,02 % a 0,3 % |
+| Ataques detectados por XGBoost + autoencoder | 18 % | 1,3 % |
+
+- **Os modelos não transferem para outra rede.** Com o limiar de 2017, dão milhões de alarmes
+  falsos, e o DoS e o DDoS (91 % dos ataques) passam sem ser reconhecidos. Recalibrar com tráfego
+  normal só derruba os alarmes levando a detecção junto: um IDS implantado precisa de exemplos de
+  ataque, ou de um novo treino, na própria rede.
+- **O atalho do protocolo é real.** O classificador, que só viu ataques por TCP, pega 0,1 % de um
+  DDoS por UDP; o autoencoder pega todo ele, mesmo recalibrado.
+- **A janela TCP atrapalha a transferência.** Sem ela, o XGBoost ordena melhor os ataques em cinco
+  de sete famílias (ROC-AUC do DDoS de 0,29 para 0,76), o que apoia a suspeita de que ela identifica
+  as máquinas de 2017, e não os ataques.
+- **O que transfere:** as varreduras de portas (em todos os modelos) e, com o limiar de 2017, Bot,
+  ataques web e força bruta SSH.
+
 ## O que estava errado nos dados
 
 - **Um relógio de 12 horas sem AM/PM em todos os arquivos.** Sem a correção, 1,47 milhão de horários
@@ -137,7 +160,11 @@ uv run nids train configs/experiments/ae_unseen.yaml
 
 Para repetir tudo no conjunto corrigido, extraia `CICIDS2017_improved.zip` (da página dos autores)
 em `data/external/cicids2017_improved/` e acrescente `--config configs/data_improved.yaml` aos
-comandos de dados e de treino. Os resultados vão para pastas próprias.
+comandos de dados e de treino. Os resultados vão para pastas próprias. Depois, com
+`CSECICIDS2018_improved.zip` em `data/external/`,
+`uv run nids score data/external/CSECICIDS2018_improved.zip --model xgb_temporal --model ae_unseen`
+pontua os 63 milhões de fluxos dele em pedaços, direto do zip (cerca de uma hora), para o
+notebook 05.
 
 ### API
 
@@ -182,8 +209,8 @@ terminais: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
   efeitos.
 - Os modelos só se aplicam a fluxos descritos pelos atributos do CICFlowMeter. Zeek ou Suricata
   exigiriam um mapeamento ou um novo treino.
-- Todos os ataques do conjunto são TCP, então um modelo treinado aqui tende a considerar normal o
-  tráfego UDP.
+- Todos os ataques do CIC-IDS2017 são TCP: no CSE-CIC-IDS2018, o classificador deixa passar o DDoS
+  por UDP, que só o autoencoder pega. E os modelos não transferem para outra rede sem novo treino.
 - O limiar do detector de anomalias é escolhido sem exemplos dos ataques, e algumas famílias são
   minúsculas (36 fluxos de infiltração, 11 de Heartbleed).
 - A API não tem autenticação nem limite de requisições, e a demonstração reenvia fluxos extraídos
