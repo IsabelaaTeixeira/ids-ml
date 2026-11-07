@@ -22,6 +22,9 @@ services:
     <<: *api
     ports:
       - "8000:8000"
+    environment:
+      # Os modelos do conjunto corrigido: NIDS_MODEL_DIR=/models/improved docker compose up
+      NIDS_MODEL_DIR: ${NIDS_MODEL_DIR:-/models}
 
   # O replay usa o teste do P2, que só é inédito para modelos do P2: o XGBoost do P1 treinou com
   # o começo de quinta e sexta. Esta API, interna à demonstração, serve o XGBoost do P2.
