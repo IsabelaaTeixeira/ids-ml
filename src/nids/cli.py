@@ -66,6 +66,30 @@ def train(
 
 
 @app.command()
+def score(
+    source: Annotated[Path, typer.Argument(help="Zip do CSE-CIC-IDS2018 corrigido.")],
+    model: Annotated[
+        list[str], typer.Option(help="Modelo de --model-dir; repita a opção para vários.")
+    ],
+    model_dir: Annotated[Path, typer.Option(help="Pasta dos modelos.")] = Path("models/improved"),
+    out: Annotated[Path, typer.Option(help="Parquet com os scores.")] = Path(
+        "data/cse2018/scores.parquet"
+    ),
+    chunksize: Annotated[int, typer.Option(help="Linhas lidas por vez.")] = 1_000_000,
+) -> None:
+    """Pontua um conjunto externo com modelos treinados, sem carregá-lo inteiro (ADR 0011)."""
+    from nids.data.cse2018 import read_chunks
+    from nids.models.external import score_flows
+    from nids.models.registry import load_model
+
+    models = {name: load_model(model_dir / name) for name in model}
+    scores = score_flows(read_chunks(source, chunksize), models)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    scores.to_parquet(out, index=False)
+    typer.echo(f"{len(scores)} fluxos pontuados por {len(models)} modelos; scores em {out}")
+
+
+@app.command()
 def replay(
     api: Annotated[str, typer.Option(help="Endereço da API.")] = "http://localhost:8000",
     file: Annotated[Path, typer.Option(help="Parte de teste a reproduzir.")] = Path(
