@@ -68,3 +68,23 @@ def test_recusa_teste_de_outro_protocolo_que_os_modelos_podem_ter_visto(client, 
     with pytest.raises(ValueError, match="classificador"):
         replay(capture, client, db, protocol="temporal", sleep=lambda seconds: None)
     assert not db.exists()
+
+
+def test_cada_alerta_vai_para_o_banco_com_os_atributos_que_o_explicam(
+    explained_models_dir, tmp_path
+):
+    settings = Settings(
+        model_dir=explained_models_dir, classifier="xgboost", detector="autoencoder"
+    )
+    capture = _capture(
+        ("2017-07-06 09:00", "10.0.0.1", "DoS", {"flow_duration": 10.0}),
+        ("2017-07-06 09:00", "10.0.0.2", "BENIGN", {}),
+    )
+    db = tmp_path / "replay.db"
+
+    replay(capture, TestClient(create_app(settings)), db, "unseen", sleep=lambda seconds: None)
+
+    attack, benign = read_verdicts(db)["explanation"]
+    assert attack.split(", ")[0] == "flow_duration"
+    assert len(attack.split(", ")) == 3
+    assert benign == ""
