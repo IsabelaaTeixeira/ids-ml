@@ -150,6 +150,24 @@ uv sync                          # ambiente a partir do uv.lock
 uv run pytest -m "not data"      # testes que não precisam do conjunto
 ```
 
+### A API em dois minutos, sem o conjunto de dados
+
+Os modelos treinados estão anexados à
+[release v1.1.0](https://github.com/IsabelaaTeixeira/ids-ml/releases/tag/v1.1.0):
+
+```bash
+curl -LO https://github.com/IsabelaaTeixeira/ids-ml/releases/download/v1.1.0/models-original.zip
+unzip models-original.zip        # cria models/
+docker compose up --build
+curl -X POST http://localhost:8000/predict -H "content-type: application/json" -d @docs/exemplo_predict.json
+```
+
+No PowerShell, use `curl.exe` e `Expand-Archive models-original.zip -DestinationPath .`.
+`models-corrigido.zip` traz os mesmos modelos treinados no conjunto corrigido (cria
+`models/improved/`). Eles esperam fluxos do extrator consertado: suba a API com
+`NIDS_MODEL_DIR=/models/improved docker compose up` e mande
+[docs/exemplo_predict_corrigido.json](docs/exemplo_predict_corrigido.json).
+
 O conjunto é baixado à mão; veja [data/README.md](data/README.md). Depois:
 
 ```bash

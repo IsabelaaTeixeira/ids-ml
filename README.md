@@ -143,6 +143,24 @@ uv sync                          # environment from uv.lock
 uv run pytest -m "not data"      # tests that do not need the dataset
 ```
 
+### The API in two minutes, without the dataset
+
+The trained models are attached to the
+[v1.1.0 release](https://github.com/IsabelaaTeixeira/ids-ml/releases/tag/v1.1.0):
+
+```bash
+curl -LO https://github.com/IsabelaaTeixeira/ids-ml/releases/download/v1.1.0/models-original.zip
+unzip models-original.zip        # creates models/
+docker compose up --build
+curl -X POST http://localhost:8000/predict -H "content-type: application/json" -d @docs/exemplo_predict.json
+```
+
+On PowerShell, use `curl.exe` and `Expand-Archive models-original.zip -DestinationPath .`.
+`models-corrigido.zip` holds the same models trained on the corrected dataset (it creates
+`models/improved/`). They expect flows from the fixed extractor: start the API with
+`NIDS_MODEL_DIR=/models/improved docker compose up` and send
+[docs/exemplo_predict_corrigido.json](docs/exemplo_predict_corrigido.json).
+
 The dataset is downloaded by hand; see [data/README.md](data/README.md). Then:
 
 ```bash

@@ -11,8 +11,9 @@ from nids.serving.api import Settings, create_app
 from .conftest import flows
 
 MAX_BATCH = 3
-# Exemplo citado no README: três fluxos reais do teste do P2
-EXAMPLE = Path(__file__).parents[2] / "docs" / "exemplo_predict.json"
+# Exemplos citados no README: três fluxos reais do teste do P2, do original e do corrigido
+DOCS = Path(__file__).parents[2] / "docs"
+EXAMPLES = ["exemplo_predict.json", "exemplo_predict_corrigido.json"]
 
 
 @pytest.fixture(scope="module")
@@ -41,8 +42,9 @@ def test_predict_devolve_um_veredito_por_fluxo_na_ordem(client):
     assert data["results"][0]["family"] == "PortScan"
 
 
-def test_exemplo_da_documentacao_segue_o_contrato(client):
-    body = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("example", EXAMPLES)
+def test_exemplo_da_documentacao_segue_o_contrato(client, example):
+    body = json.loads((DOCS / example).read_text(encoding="utf-8"))
 
     response = client.post("/predict", json=body)
 
