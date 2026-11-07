@@ -349,6 +349,7 @@ O `Predictor` não sabe nada de HTTP. Por isso é testável sozinho e reutilizá
 |---|---|---|
 | GET | `/health` | Verificação de vida |
 | GET | `/model` | Versões, features e limiares dos modelos carregados |
+| GET | `/metrics` | Vereditos por tipo e latência do `/predict`, no formato do Prometheus |
 | POST | `/predict` | `{"flows": [...]}` com 1 a `NIDS_MAX_BATCH` fluxos e um veredito por fluxo |
 
 ```json
@@ -374,6 +375,7 @@ Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
 - Pydantic com `extra="forbid"` e NaN/inf rejeitados: entrada inválida gera 422. A mensagem de erro não repete a entrada, porque NaN não cabe em JSON.
 - Os modelos são carregados uma vez, quando o uvicorn chama a fábrica `create_app` (`uvicorn nids.serving.api:create_app --factory`). Se um modelo usa atributo fora do schema, ou se classificador e detector estão trocados, a API nem sobe.
 - Configuração por variáveis de ambiente via pydantic-settings: `NIDS_MODEL_DIR` (padrão `models`), `NIDS_CLASSIFIER` (`xgb_temporal`), `NIDS_DETECTOR` (`ae_unseen`) e `NIDS_MAX_BATCH` (1000).
+- Proteção opcional ([ADR 0012](adr/0012-protecao-da-api.md)): `NIDS_API_KEY` exige o cabeçalho `X-API-Key` em `/predict` e `/model` (401 sem ele) e `NIDS_RATE_LIMIT` limita as requisições por minuto, por cliente (429 acima disso). As duas vêm desligadas, para a demonstração local; `/health` e `/metrics` ficam abertos.
 
 ### 9.4 Replay e dashboard
 
@@ -434,6 +436,7 @@ O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas fei
   - [0009](adr/0009-replay-com-modelos-do-p2.md): a demonstração reproduz o teste do P2 com os modelos do P2
   - [0010](adr/0010-conjunto-corrigido.md): repetir os experimentos no CIC-IDS2017 corrigido, pelo mesmo pipeline
   - [0011](adr/0011-outra-rede.md): testar os modelos do 2017 corrigido no CSE-CIC-IDS2018 corrigido
+  - [0012](adr/0012-protecao-da-api.md): chave de acesso e limite de requisições opcionais; métricas abertas
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto

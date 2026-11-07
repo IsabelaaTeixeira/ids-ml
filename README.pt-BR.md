@@ -196,6 +196,11 @@ um veredito por fluxo. [docs/exemplo_predict.json](docs/exemplo_predict.json) tr
 do teste (um DDoS, um da infiltração e um normal), que recebem os três vereditos. No PowerShell, use
 `curl.exe`. Sem Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
 
+Antes de deixar a API acessível fora da sua máquina, defina `NIDS_API_KEY` (os clientes passam a
+enviá-la no cabeçalho `X-API-Key`) e `NIDS_RATE_LIMIT` (requisições por minuto, por cliente); os
+dois vêm desligados para a demonstração local ([ADR 0012](docs/adr/0012-protecao-da-api.md)).
+`GET /metrics` expõe a contagem de vereditos e a latência do `/predict` no formato do Prometheus.
+
 ### Demonstração ao vivo
 
 ```bash
