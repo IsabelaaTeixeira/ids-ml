@@ -62,14 +62,25 @@ def day_from_filename(path: Path) -> str:
     return day
 
 
+def column_names(header, keep) -> dict[str, str]:
+    """Colunas do cabeçalho corrigido que interessam, com o nome do conjunto original."""
+    names = {c: RENAMED.get(schema.normalize_name(c), schema.normalize_name(c)) for c in header}
+    return {c: n for c, n in names.items() if n in keep or n == ATTEMPTED}
+
+
+def read_options(header, keep) -> dict:
+    """usecols e dtype para o pd.read_csv, com os nomes de column_names."""
+    wanted = column_names(header, keep)
+    dtypes = {c: ("str" if n in TEXT_COLUMNS else "float32") for c, n in wanted.items()}
+    return {"usecols": list(wanted), "dtype": dtypes}
+
+
 def read_improved_csv(path: Path) -> pd.DataFrame:
     """Lê um CSV do conjunto corrigido e devolve as colunas e rótulos do conjunto original."""
     day = day_from_filename(path)
     header = pd.read_csv(path, nrows=0).columns
-    names = {c: RENAMED.get(schema.normalize_name(c), schema.normalize_name(c)) for c in header}
-    wanted = {c: n for c, n in names.items() if n in schema.RAW_COLUMNS or n == ATTEMPTED}
-    dtypes = {c: ("str" if n in TEXT_COLUMNS else "float32") for c, n in wanted.items()}
-    df = pd.read_csv(path, usecols=list(wanted), dtype=dtypes).rename(columns=wanted)
+    names = column_names(header, schema.RAW_COLUMNS)
+    df = pd.read_csv(path, **read_options(header, schema.RAW_COLUMNS)).rename(columns=names)
 
     # A cópia de Fwd Header Length do original não existe aqui; ela é descartada na limpeza
     df["fwd_header_length_1"] = df["fwd_header_length"]
