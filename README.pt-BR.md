@@ -37,8 +37,10 @@ A primeira coluna é o teto: um XGBoost treinado com o começo de cada dia, que 
 famílias. O Infiltration fica fora do treino dele (36 fluxos são poucos), e os fluxos de Bot mudam
 de comportamento depois do período de treino.
 
-- **A divisão aleatória esconde a dificuldade real.** O mesmo XGBoost marca 0,957 de macro-F1 com
-  os dados embaralhados e 0,801 quando a divisão respeita o tempo: 15,6 pontos de inflação.
+- **A divisão aleatória esconde os problemas dos dados.** O mesmo XGBoost marca 0,957 de macro-F1
+  com os dados embaralhados e 0,801 quando a divisão respeita o tempo. No conjunto corrigido (abaixo),
+  a diferença some: ela vinha de erros de rótulo que a divisão aleatória espalha pelo treino e pelo
+  teste.
 - **Diante de ataques inéditos, o classificador cai de 99,0 % para 38,1 % de revocação.** O que ele
   ainda pega se parece com o treino: o DDoS e os ataques web atingem o mesmo servidor e a mesma
   porta que os DoS de quarta.
@@ -51,6 +53,33 @@ de comportamento depois do período de treino.
 - **Boa parte do "erro" está nos rótulos.** As respostas da vítima ao atacante e uma varredura de
   portas interna feita pela máquina invadida estão rotuladas como tráfego normal. Sem elas, a taxa
   de falsos positivos no teste fica em cerca de 1 %, como na validação.
+
+### No conjunto corrigido
+
+Engelen et al. refizeram o CIC-IDS2017 a partir das capturas de pacotes, com um extrator de fluxos
+consertado e rótulos novos ([página dos autores](https://intrusion-detection.distrinet-research.be/CNS2022/)).
+O mesmo pipeline e os mesmos modelos nessa versão mudam o quadro
+([notebook 04](notebooks/04_conjunto_corrigido.ipynb)):
+
+| | Original | Corrigido |
+|---|---|---|
+| XGBoost, macro-F1 na divisão aleatória | 0,957 | 0,997 |
+| XGBoost, macro-F1 na divisão temporal | 0,801 | 0,997 |
+| Ataques inéditos, revocação do XGBoost | 0,381 | 0,435 |
+| Ataques inéditos, revocação do autoencoder | 0,184 | 0,609 |
+| Ataques inéditos, XGBoost + autoencoder | 0,454 | 0,994 |
+| Taxa de falsos positivos no teste (alvo de 1 %) | 2,1 % a 8,4 % | 1,5 % a 1,7 % |
+
+- **A diferença entre a divisão aleatória e a temporal some.** A divisão temporal estava expondo
+  erros nos dados, não um problema mais difícil: os fluxos de Bot e de DDoS que "falhavam" estavam
+  mal rotulados.
+- **Com rótulos e fluxos corrigidos, a detecção de anomalias funciona.** As varreduras de portas que
+  passavam viram 99 % detectáveis, e classificador e autoencoder juntos pegam 99,4 % dos ataques
+  inéditos. O resultado pessimista no original era, em boa parte, efeito do conjunto. O Bot continua
+  passando, e 3 % de falsos positivos ainda é muito alarme numa taxa-base realista.
+- **A qualidade dos dados quase não aparece na divisão aleatória** (0,957 contra 0,997), que é como
+  a maioria dos resultados publicados é medida. Ela muda a conclusão nos protocolos que medem
+  generalização.
 
 ## O que estava errado nos dados
 
@@ -106,6 +135,10 @@ uv run nids train configs/experiments/xgb_temporal.yaml   # um YAML por experime
 uv run nids train configs/experiments/ae_unseen.yaml
 ```
 
+Para repetir tudo no conjunto corrigido, extraia `CICIDS2017_improved.zip` (da página dos autores)
+em `data/external/cicids2017_improved/` e acrescente `--config configs/data_improved.yaml` aos
+comandos de dados e de treino. Os resultados vão para pastas próprias.
+
 ### API
 
 ```bash
@@ -144,8 +177,9 @@ terminais: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
 ## Limitações
 
 - O conjunto foi gerado em laboratório em 2017, com tráfego normal sintético, e os rótulos originais
-  têm erros conhecidos. Eles foram mantidos como publicados, e os resultados são reportados com e sem
-  os fluxos mal rotulados.
+  têm erros conhecidos. Os experimentos principais foram repetidos na versão corrigida, mas as
+  diferenças misturam rótulos novos e fluxos montados de outro jeito, e não dá para separar os dois
+  efeitos.
 - Os modelos só se aplicam a fluxos descritos pelos atributos do CICFlowMeter. Zeek ou Suricata
   exigiriam um mapeamento ou um novo treino.
 - Todos os ataques do conjunto são TCP, então um modelo treinado aqui tende a considerar normal o

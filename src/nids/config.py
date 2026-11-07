@@ -56,6 +56,8 @@ class DataConfig(_Config):
     paths: Paths
     timestamp: TimestampConfig
     split: SplitConfig
+    # original: CSVs publicados pelo CIC; improved: a versão corrigida de Engelen et al. (ADR 0010)
+    source: Literal["original", "improved"] = "original"
 
 
 class ExperimentConfig(_Config):
