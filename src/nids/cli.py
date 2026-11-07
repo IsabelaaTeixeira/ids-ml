@@ -108,6 +108,10 @@ def replay(
             formats=["%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M"],
         ),
     ] = None,
+    api_key: Annotated[
+        str | None,
+        typer.Option(envvar="NIDS_API_KEY", help="Chave da API, se ela exigir uma (X-API-Key)."),
+    ] = None,
 ) -> None:
     """Manda o teste à API em ordem cronológica e grava os vereditos para o painel."""
     # Só a demonstração precisa do cliente HTTP (grupo de dependências demo)
@@ -119,7 +123,8 @@ def replay(
     flows = pd.read_parquet(file)
     if start is not None:
         flows = flows[flows[schema.TIMESTAMP] >= start]
-    with httpx2.Client(base_url=api, timeout=60) as client:
+    headers = {"X-API-Key": api_key} if api_key else {}
+    with httpx2.Client(base_url=api, timeout=60, headers=headers) as client:
         try:
             # O protocolo é a pasta da parte: data/processed/<protocolo>/test.parquet
             sent = run_replay(flows, client, db, protocol=file.parent.name, speed=speed)

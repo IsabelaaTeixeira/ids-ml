@@ -188,6 +188,11 @@ returns one verdict per flow. [docs/exemplo_predict.json](docs/exemplo_predict.j
 test flows (a DDoS, an infiltration and a normal one) that get the three verdicts. On PowerShell,
 use `curl.exe`. Without Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
 
+Before exposing the API beyond your machine, set `NIDS_API_KEY` (clients then send it in the
+`X-API-Key` header) and `NIDS_RATE_LIMIT` (requests per minute per client); both are off by default
+for the local demo ([ADR 0012](docs/adr/0012-protecao-da-api.md)). `GET /metrics` exposes verdict
+counts and `/predict` latency in Prometheus format.
+
 ### Live demo
 
 ```bash
