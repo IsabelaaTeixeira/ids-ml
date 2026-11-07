@@ -26,9 +26,10 @@ class Predictor:
             if unknown:
                 raise ValueError(f"{name} usa atributos fora de schema.FEATURES: {unknown}")
 
-    def predict(self, flows: pd.DataFrame) -> list[dict]:
+    def predict(self, flows: pd.DataFrame, explain: bool = True) -> list[dict]:
         """Um veredito por fluxo: "attack" se o classificador passa do limiar dele, com a
-        família; senão "suspicious" se o detector passa do dele; senão "benign"."""
+        família; senão "suspicious" se o detector passa do dele; senão "benign". Com `explain`,
+        cada alerta traz os atributos que mais pesaram nele."""
         # Os limiares foram calculados sobre Model.score, então o veredito usa o mesmo score
         attack_probability = self.classifier.score(flows)
         anomaly_score = self.detector.score(flows)
@@ -37,14 +38,24 @@ class Predictor:
         # Com limiar abaixo de 0,5, um fluxo pode ser ataque com BENIGN como classe mais provável
         family = self.classifier.probabilities(flows).drop(columns=BENIGN).idxmax(axis=1)
         verdict = np.where(attack, "attack", np.where(anomaly, "suspicious", "benign"))
+        # Cada alerta é explicado pelo modelo que o disparou; os normais ficam sem explicação
+        explanation = [[] for _ in range(len(flows))]
+        for model, alerted in ((self.classifier, attack), (self.detector, ~attack & anomaly)):
+            rows = np.flatnonzero(alerted)
+            if explain and rows.size:
+                for i, why in zip(rows, model.explain(flows.iloc[rows]), strict=True):
+                    explanation[i] = why
         return [
             {
                 "verdict": str(v),
                 "family": str(f) if v == "attack" else None,
                 "attack_probability": float(p),
                 "anomaly_score": float(s),
+                "explanation": why,
             }
-            for v, f, p, s in zip(verdict, family, attack_probability, anomaly_score, strict=True)
+            for v, f, p, s, why in zip(
+                verdict, family, attack_probability, anomaly_score, explanation, strict=True
+            )
         ]
 
 

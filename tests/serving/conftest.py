@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 from nids import schema
 from nids.config import ExperimentConfig
@@ -53,6 +54,57 @@ def _detector() -> Model:
     detector = train_detector(experiment, X, y)
     detector.metadata["threshold"] = threshold_at_fpr(detector.score(X), 0.01)
     return detector
+
+
+# Os modelos que se explicam. Os cinco atributos são ~ N(0, 1) nos normais, que é tudo o que o
+# autoencoder viu; no XGBoost, um atributo separa cada família: flow_duration perto de 10 no DoS
+# e idle_mean perto de 10 no PortScan
+EXPLAINED = ["flow_duration", "total_fwd_packets", "flow_bytes_s", "fwd_packets_s", "idle_mean"]
+SEPARATES = {"DoS": "flow_duration", "PortScan": "idle_mean"}
+
+
+def _xgboost(normal: pd.DataFrame, rng: np.random.Generator) -> Model:
+    classes = ["BENIGN", *SEPARATES]
+    attacks = []
+    for feature in SEPARATES.values():
+        attack = pd.DataFrame(rng.normal(0, 1, normal.shape), columns=EXPLAINED)
+        attack[feature] = rng.normal(10, 1, len(attack))
+        attacks.append(attack)
+    X = pd.concat([normal, *attacks], ignore_index=True)
+    y = np.repeat(np.arange(len(classes)), len(normal))
+    xgb = XGBClassifier(n_estimators=20, max_depth=2, random_state=0).fit(X, y)
+    metadata = {
+        "name": "xgboost",
+        "protocol": "unseen",
+        "kind": "classifier",
+        "features": EXPLAINED,
+        "classes": classes,
+        "threshold": 0.5,
+    }
+    return Model(xgb, metadata)
+
+
+def _autoencoder(normal: pd.DataFrame) -> Model:
+    experiment = ExperimentConfig(
+        name="autoencoder",
+        protocol="unseen",
+        model="autoencoder",
+        params={"hidden_layer_sizes": [4], "max_iter": 300},
+    )
+    detector = train_detector(experiment, normal, pd.Series([schema.BENIGN] * len(normal)))
+    detector.metadata["threshold"] = threshold_at_fpr(detector.score(normal), 0.01)
+    return detector
+
+
+@pytest.fixture(scope="session")
+def explained_models_dir(tmp_path_factory):
+    """Pasta com os modelos "xgboost" e "autoencoder", os dois tipos que explicam o alerta."""
+    rng = np.random.default_rng(0)
+    normal = pd.DataFrame(rng.normal(0, 1, (300, len(EXPLAINED))), columns=EXPLAINED)
+    directory = tmp_path_factory.mktemp("explained")
+    save_model(_xgboost(normal, rng), directory / "xgboost")
+    save_model(_autoencoder(normal), directory / "autoencoder")
+    return directory
 
 
 @pytest.fixture(scope="session")
