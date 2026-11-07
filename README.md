@@ -77,6 +77,29 @@ pipeline and models on that version changes the picture
 - **Data quality barely shows on a random split** (0.957 against 0.997), which is how most published
   results are measured. It changes the conclusion on the protocols that measure generalization.
 
+### On another network
+
+The models trained on the corrected CIC-IDS2017 were then run on the corrected
+**CSE-CIC-IDS2018**: same lab and same flow extractor, but other machines, on a network in AWS, with
+63 million flows ([notebook 05](notebooks/05_outra_rede.ipynb)).
+
+| | 2017 threshold | Threshold recalibrated on one normal day of 2018 |
+|---|---|---|
+| False-positive rate | 2.9 % to 10.7 % | 0.02 % to 0.3 % |
+| Attacks detected by XGBoost + autoencoder | 18 % | 1.3 % |
+
+- **The models do not transfer to another network.** With the 2017 threshold they raise millions of
+  false alarms, and DoS and DDoS (91 % of the attacks) go unrecognized. Recalibrating with normal
+  traffic only brings the alarms down by taking detection with them: a deployed IDS needs attack
+  examples, or retraining, on its own network.
+- **The protocol shortcut is real.** The classifier, which only saw TCP attacks, catches 0.1 % of a
+  UDP DDoS; the autoencoder catches all of it, even after recalibration.
+- **The TCP window hurts transfer.** Without it, the XGBoost ranks attacks better in five of seven
+  families (DDoS ROC-AUC from 0.29 to 0.76), which supports the suspicion that it identifies the
+  2017 machines rather than the attacks.
+- **What does transfer:** port scans (every model) and, with the 2017 threshold, Bot, web attacks
+  and SSH brute force.
+
 ## What was wrong with the data
 
 - **A 12-hour clock without AM/PM in every file.** Without the fix, 1.47 million timestamps (52 %)
@@ -131,6 +154,9 @@ uv run nids train configs/experiments/ae_unseen.yaml
 To repeat everything on the corrected dataset, extract `CICIDS2017_improved.zip` (from the
 authors' page) into `data/external/cicids2017_improved/` and add
 `--config configs/data_improved.yaml` to the data and train commands. Results go to separate folders.
+Then, with `CSECICIDS2018_improved.zip` in `data/external/`,
+`uv run nids score data/external/CSECICIDS2018_improved.zip --model xgb_temporal --model ae_unseen`
+scores its 63 million flows in chunks, straight from the zip (about an hour), for notebook 05.
 
 ### API
 
@@ -174,7 +200,8 @@ terminals: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
   differences mix new labels and differently built flows, and the two effects cannot be separated.
 - The models only apply to flows described by CICFlowMeter features. Zeek or Suricata would need a
   mapping or retraining.
-- All attacks in the dataset are TCP, so a model trained here tends to call UDP traffic normal.
+- All attacks in CIC-IDS2017 are TCP: on CSE-CIC-IDS2018, the classifier misses a UDP DDoS that only
+  the autoencoder catches. And the models do not transfer to another network without retraining.
 - The anomaly threshold is chosen without examples of the attacks, and some families are tiny
   (36 infiltration flows, 11 Heartbleed).
 - The API has no authentication or rate limit, and the demo replays flows extracted after the
