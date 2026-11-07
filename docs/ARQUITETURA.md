@@ -104,7 +104,8 @@ Princípios que guiam todo o resto:
 │   ├── 02_supervisionado.ipynb
 │   ├── 03_anomalia.ipynb
 │   ├── 04_conjunto_corrigido.ipynb
-│   └── 05_outra_rede.ipynb
+│   ├── 05_outra_rede.ipynb
+│   └── 06_explicacao.ipynb    # por que cada alerta disparou
 ├── src/nids/
 │   ├── cli.py                 # nids data verify|clean|split, train, evaluate, serve, replay
 │   ├── config.py              # YAML -> objetos validados (Pydantic)
@@ -356,7 +357,14 @@ O `Predictor` não sabe nada de HTTP. Por isso é testável sozinho e reutilizá
 {
   "models": {"classifier": "xgb_temporal", "detector": "ae_unseen"},
   "results": [
-    {"verdict": "attack", "family": "DDoS", "attack_probability": 0.9999998, "anomaly_score": 0.0435}
+    {
+      "verdict": "attack", "family": "DDoS", "attack_probability": 0.9999998, "anomaly_score": 0.0435,
+      "explanation": [
+        {"feature": "total_length_of_bwd_packets", "weight": 2.94},
+        {"feature": "min_seg_size_forward", "weight": 2.39},
+        {"feature": "init_win_bytes_backward", "weight": 2.39}
+      ]
+    }
   ]
 }
 ```
@@ -368,6 +376,8 @@ O `Predictor` não sabe nada de HTTP. Por isso é testável sozinho e reutilizá
 - Caso contrário: `benign`.
 
 Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
+
+**Explicação** ([ADR 0013](adr/0013-explicacao-dos-alertas.md)): cada alerta traz os três atributos que mais pesaram nele, pelo modelo que o disparou. Num `attack`, a contribuição de cada atributo para a margem da família prevista (`pred_contribs` do XGBoost, o SHAP exato das árvores); num `suspicious`, o erro de reconstrução de cada atributo no autoencoder. Os `benign` vêm com a lista vazia. A explicação custa caro em lotes cheios de ataques (2,4 s para 1.000, contra 0,1 s sem ela), e `POST /predict?explain=false` a dispensa.
 
 ### 9.3 Detalhes
 
@@ -383,7 +393,7 @@ Os limiares são os da etapa 3, lidos do `metadata.json` de cada modelo.
 
 O replay usa a API por HTTP, sem importar o `Predictor`, então a demonstração exercita o serviço de verdade. A API da demonstração serve o **XGBoost do P2** com o autoencoder: o XGBoost do P1 treinou com o começo de quinta e sexta, e o replay se recusa a rodar se algum modelo servido não for do protocolo do teste ([ADR 0009](adr/0009-replay-com-modelos-do-p2.md)).
 
-O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas feitas em SQL (`demo/summary.py`), porque no fim são quase um milhão de vereditos. Ele mostra o horário da captura, os fluxos analisados, a revocação, os alarmes falsos e os alertas até o momento; um gráfico por dia com ataques reais, alertas de ataque e alertas suspeitos por minuto; a tabela de acertos e erros por família verdadeira; e os últimos alertas, com IPs e acerto ou erro. Mostrar os erros junto com os alertas é mais honesto e mais interessante. O tema (`.streamlit/config.toml`) usa a fonte IBM Plex e os mesmos tons neutros da paleta dos gráficos, nos temas claro e escuro.
+O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas feitas em SQL (`demo/summary.py`), porque no fim são quase um milhão de vereditos. Ele mostra o horário da captura, os fluxos analisados, a revocação, os alarmes falsos e os alertas até o momento; um gráfico por dia com ataques reais, alertas de ataque e alertas suspeitos por minuto; a tabela de acertos e erros por família verdadeira; e os últimos alertas, com IPs, os atributos que explicam cada um e acerto ou erro. Mostrar os erros junto com os alertas é mais honesto e mais interessante. O tema (`.streamlit/config.toml`) usa a fonte IBM Plex e os mesmos tons neutros da paleta dos gráficos, nos temas claro e escuro.
 
 ## 10. Empacotamento
 
@@ -437,6 +447,7 @@ O painel (`dashboard/app.py`) relê o banco a cada 3 segundos, com as contas fei
   - [0010](adr/0010-conjunto-corrigido.md): repetir os experimentos no CIC-IDS2017 corrigido, pelo mesmo pipeline
   - [0011](adr/0011-outra-rede.md): testar os modelos do 2017 corrigido no CSE-CIC-IDS2018 corrigido
   - [0012](adr/0012-protecao-da-api.md): chave de acesso e limite de requisições opcionais; métricas abertas
+  - [0013](adr/0013-explicacao-dos-alertas.md): cada alerta explicado pelo modelo que o disparou
 - O README é atualizado ao fim de cada etapa, não só no final.
 
 ## 13. Roteiro e critérios de pronto
