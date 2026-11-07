@@ -42,6 +42,43 @@ class Model:
         benign = self.metadata["classes"].index(BENIGN)
         return 1 - self.estimator.predict_proba(X)[:, benign]
 
+    def explain(self, flows: pd.DataFrame, top: int = 3) -> list[list[dict[str, Any]]]:
+        """Os atributos que mais pesaram no score de cada fluxo, do maior peso para o menor.
+
+        XGBoost: a contribuição de cada atributo (SHAP exato das árvores) para a família de
+        ataque mais provável. Autoencoder: o erro de reconstrução de cada atributo. Os outros
+        modelos não têm explicação, e a lista vem vazia.
+        """
+        X = flows[self.metadata["features"]]
+        weights = self._weights(X)
+        if weights is None:
+            return [[] for _ in range(len(X))]
+        names = self.metadata["features"]
+        best = np.argsort(-weights, axis=1)[:, :top]
+        return [
+            [{"feature": names[j], "weight": float(row[j])} for j in order]
+            for row, order in zip(weights, best, strict=True)
+        ]
+
+    def _weights(self, X: pd.DataFrame) -> np.ndarray | None:
+        if self.metadata["kind"] == "anomaly":
+            *preprocessing, (_, detector) = self.estimator.steps
+            if not hasattr(detector, "feature_errors"):
+                return None
+            for _, step in preprocessing:
+                X = step.transform(X)
+            return detector.feature_errors(X)
+        if not hasattr(self.estimator, "get_booster"):
+            return None
+        from xgboost import DMatrix
+
+        # Uma matriz por classe (os classificadores do projeto têm de 3 a 7); a última coluna de
+        # cada uma é o viés, que não é atributo
+        contributions = self.estimator.get_booster().predict(DMatrix(X), pred_contribs=True)
+        proba = self.probabilities(X).drop(columns=BENIGN)
+        family = [self.metadata["classes"].index(f) for f in proba.idxmax(axis=1)]
+        return contributions[np.arange(len(X)), family, :-1]
+
 
 def save_model(model: Model, directory: Path) -> None:
     directory.mkdir(parents=True, exist_ok=True)

@@ -57,3 +57,8 @@ def test_ultimos_alertas_do_mais_novo_ao_mais_antigo_com_acerto_ou_erro(verdicts
     assert alerts["source_ip"].tolist() == ["10.0.0.5", "10.0.0.3", "10.0.0.2"]
     assert alerts["family"].tolist() == ["Infiltration", "PortScan", "BENIGN"]
     assert alerts["correct"].tolist() == [True, True, False]
+    assert alerts["explanation"].tolist() == [
+        "total_fwd_packets",
+        "destination_port, flow_duration",
+        "idle_mean, flow_iat_max",
+    ]

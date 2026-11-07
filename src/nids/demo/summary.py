@@ -62,10 +62,11 @@ def per_minute(db: Path) -> pd.DataFrame:
 
 
 def recent_alerts(db: Path, n: int = 20) -> pd.DataFrame:
-    """Os n alertas mais recentes, do mais novo ao mais antigo. Acerto: o fluxo era ataque."""
+    """Os n alertas mais recentes, do mais novo ao mais antigo. Acerto: o fluxo era ataque.
+    Explicação: os atributos que mais pesaram no alerta, do maior peso para o menor."""
     query = f"""
         SELECT timestamp, source_ip, destination_ip, destination_port, verdict,
-               predicted_family, family, {ATTACK} AS correct
+               predicted_family, explanation, family, {ATTACK} AS correct
         FROM verdicts WHERE {ALERT} ORDER BY rowid DESC LIMIT ?
     """
     with closing(_connect(db)) as conn:
