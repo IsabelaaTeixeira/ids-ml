@@ -104,6 +104,23 @@ de fluxos ([notebook 05](notebooks/05_outra_rede.ipynb)).
 - **O que transfere:** as varreduras de portas (em todos os modelos) e, com o limiar de 2017, Bot,
   ataques web e força bruta SSH.
 
+### Por que cada alerta disparou
+
+Cada alerta da API vem com os três atributos que mais pesaram nele: as contribuições exatas (SHAP)
+das árvores do XGBoost para a família prevista, ou o erro de reconstrução de cada atributo no
+autoencoder ([notebook 06](notebooks/06_explicacao.ipynb),
+[ADR 0013](docs/adr/0013-explicacao-dos-alertas.md)). No teste de quinta e sexta, as explicações
+mostram, alerta por alerta, em que os modelos se apoiam:
+
+- **Os ataques web são pegos pelo atalho da janela TCP.** Em 93 % dos 1.999 alertas de ataque web
+  (quase todos rotulados como DoS, uma família que o modelo conhece), um dos três campos da janela
+  TCP está entre os três atributos principais. Nenhum dos 81.789 alertas de DDoS tem: o DDoS é
+  reconhecido pelo tamanho dos pacotes.
+- **A explicação separa o erro de rótulo do erro do modelo.** Dos 22.506 "alarmes falsos" do
+  autoencoder explicados exatamente como as varreduras que ele detecta, 22.502 são a varredura
+  interna da máquina invadida, rotulada como normal. Os 6.320 alarmes falsos de fato não têm padrão
+  em comum.
+
 ## O que estava errado nos dados
 
 - **Um relógio de 12 horas sem AM/PM em todos os arquivos.** Sem a correção, 1,47 milhão de horários
@@ -134,10 +151,10 @@ flowchart LR
 - **Modelos:** XGBoost e Random Forest; Isolation Forest e um autoencoder treinados só com tráfego
   normal. Cada modelo é salvo com os atributos, as classes, o limiar e as versões das bibliotecas.
 - **Serviço:** uma API em FastAPI dá a cada fluxo um veredito (`attack`, com a família,
-  `suspicious` ou `benign`). Com fluxos reais do teste, ela reproduz exatamente as contagens da
-  avaliação offline.
-- **Engenharia:** ambiente travado (uv), configuração validada, 83 testes escritos em fronteiras
-  combinadas, integração contínua com lint, testes e build das imagens Docker, e 9 registros de
+  `suspicious` ou `benign`), cada alerta com os atributos que o explicam. Com fluxos reais do teste,
+  ela reproduz exatamente as contagens da avaliação offline.
+- **Engenharia:** ambiente travado (uv), configuração validada, 98 testes escritos em fronteiras
+  combinadas, integração contínua com lint, testes e build das imagens Docker, e 13 registros de
   decisões de arquitetura.
 
 ## Como rodar
@@ -193,8 +210,10 @@ curl -X POST http://localhost:8000/predict -H "content-type: application/json" -
 
 `POST /predict` recebe até 1.000 fluxos, cada um com os 60 atributos do conjunto limpo, e devolve
 um veredito por fluxo. [docs/exemplo_predict.json](docs/exemplo_predict.json) traz três fluxos reais
-do teste (um DDoS, um da infiltração e um normal), que recebem os três vereditos. No PowerShell, use
-`curl.exe`. Sem Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
+do teste (um DDoS, um da infiltração e um normal), que recebem os três vereditos. Cada alerta vem
+com os três atributos que mais pesaram nele (`explanation`); `POST /predict?explain=false` dispensa a
+explicação, o que deixa a resposta até 20 vezes mais rápida num lote cheio de ataques. No
+PowerShell, use `curl.exe`. Sem Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
 
 Antes de deixar a API acessível fora da sua máquina, defina `NIDS_API_KEY` (os clientes passam a
 enviá-la no cabeçalho `X-API-Key`) e `NIDS_RATE_LIMIT` (requisições por minuto, por cliente); os
@@ -209,9 +228,10 @@ docker compose --profile demo up --build    # painel em http://localhost:8501
 
 O replay manda o teste de quinta e sexta (quase 1 milhão de fluxos) à API em ordem cronológica, um
 minuto de captura por segundo, e o painel mostra os alertas, os acertos e os erros enquanto
-acontecem. O replay inteiro leva cerca de 20 minutos e termina nos mesmos 45,4 % da avaliação
-offline. A API da demonstração serve o XGBoost treinado de segunda a quarta: o padrão treinou com o
-começo de quinta e sexta, e o replay se recusa a rodar com modelos que podem ter visto o teste.
+acontecem, com os atributos por trás de cada alerta. O replay inteiro leva cerca de 20 minutos e
+termina nos mesmos 45,4 % da avaliação offline. A API da demonstração serve o XGBoost treinado de
+segunda a quarta: o padrão treinou com o começo de quinta e sexta, e o replay se recusa a rodar com
+modelos que podem ter visto o teste.
 
 Para ver só a tarde de sexta (PortScan e DDoS):
 
@@ -236,14 +256,18 @@ terminais: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
   por UDP, que só o autoencoder pega. E os modelos não transferem para outra rede sem novo treino.
 - O limiar do detector de anomalias é escolhido sem exemplos dos ataques, e algumas famílias são
   minúsculas (36 fluxos de infiltração, 11 de Heartbleed).
-- A API não tem autenticação nem limite de requisições, e a demonstração reenvia fluxos extraídos
-  depois da captura, então a latência dos alertas não foi medida.
+- As explicações descrevem o que o modelo usou, não o ataque: uma explicação plausível não torna o
+  alerta certo, e uma apoiada na janela TCP não o torna errado.
+- A chave de acesso e o limite de requisições vêm desligados, e o limite vive na memória de um
+  processo só. A demonstração reenvia fluxos extraídos depois da captura, então a latência dos
+  alertas não foi medida.
 
 ## Documentação
 
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): arquitetura, protocolos e roteiro.
 - [docs/adr/](docs/adr/): as decisões, uma por registro.
-- [notebooks/](notebooks/): análise exploratória, modelos supervisionados e detecção de anomalias.
+- [notebooks/](notebooks/): análise exploratória, modelos supervisionados, detecção de anomalias, o
+  conjunto corrigido, a outra rede e a explicação dos alertas.
 
 ## Estrutura do repositório
 

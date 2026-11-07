@@ -100,6 +100,21 @@ The models trained on the corrected CIC-IDS2017 were then run on the corrected
 - **What does transfer:** port scans (every model) and, with the 2017 threshold, Bot, web attacks
   and SSH brute force.
 
+### Why each alert fires
+
+Each alert from the API comes with the three features that weighed most in it: the exact SHAP
+contributions of the XGBoost trees for the predicted family, or the autoencoder's reconstruction
+error per feature ([notebook 06](notebooks/06_explicacao.ipynb),
+[ADR 0013](docs/adr/0013-explicacao-dos-alertas.md)). On the Thursday and Friday test, the
+explanations show, alert by alert, what the models rely on:
+
+- **Web attacks are caught through the TCP window shortcut.** In 93 % of the 1,999 web-attack
+  alerts (nearly all labeled DoS, a family the model knows), one of the three TCP window features is
+  among the top three. None of the 81,789 DDoS alerts has one: DDoS is recognized by packet sizes.
+- **The explanation separates label errors from model errors.** Of the 22,506 autoencoder "false
+  alarms" explained exactly like its port-scan detections, 22,502 are the internal scan by the
+  infiltrated host, labeled as normal. The 6,320 truly false alarms share no pattern.
+
 ## What was wrong with the data
 
 - **A 12-hour clock without AM/PM in every file.** Without the fix, 1.47 million timestamps (52 %)
@@ -129,9 +144,10 @@ flowchart LR
 - **Models:** XGBoost and Random Forest; Isolation Forest and an autoencoder trained only on normal
   traffic. Each model is saved with its features, classes, threshold and library versions.
 - **Service:** a FastAPI API gives each flow a verdict (`attack` with the family, `suspicious` or
-  `benign`). With real test flows, it reproduces the offline evaluation counts exactly.
-- **Engineering:** locked environment (uv), validated configuration, 83 tests written at agreed
-  boundaries, CI with lint, tests and Docker builds, and 9 architecture decision records.
+  `benign`), each alert with the features that explain it. With real test flows, it reproduces the
+  offline evaluation counts exactly.
+- **Engineering:** locked environment (uv), validated configuration, 98 tests written at agreed
+  boundaries, CI with lint, tests and Docker builds, and 13 architecture decision records.
 
 ## Run it
 
@@ -185,8 +201,10 @@ curl -X POST http://localhost:8000/predict -H "content-type: application/json" -
 
 `POST /predict` takes up to 1,000 flows, each with the 60 features of the cleaned dataset, and
 returns one verdict per flow. [docs/exemplo_predict.json](docs/exemplo_predict.json) holds three real
-test flows (a DDoS, an infiltration and a normal one) that get the three verdicts. On PowerShell,
-use `curl.exe`. Without Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
+test flows (a DDoS, an infiltration and a normal one) that get the three verdicts. Each alert comes
+with the three features that weighed most in it (`explanation`); `POST /predict?explain=false` skips
+them, which is up to 20 times faster on a batch full of attacks. On PowerShell, use `curl.exe`.
+Without Docker: `uv run uvicorn nids.serving.api:create_app --factory`.
 
 Before exposing the API beyond your machine, set `NIDS_API_KEY` (clients then send it in the
 `X-API-Key` header) and `NIDS_RATE_LIMIT` (requests per minute per client); both are off by default
@@ -200,10 +218,11 @@ docker compose --profile demo up --build    # dashboard at http://localhost:8501
 ```
 
 The replay sends the Thursday and Friday test (nearly 1 million flows) to the API in time order, one
-minute of capture per second, and the dashboard shows alerts, hits and misses as they happen. The
-full replay takes about 20 minutes and ends at the same 45.4 % as the offline evaluation. The demo
-API serves the XGBoost trained on Monday to Wednesday: the default one was trained on the early part
-of Thursday and Friday, and the replay refuses to run with models that may have seen its test data.
+minute of capture per second, and the dashboard shows alerts, hits and misses as they happen, with
+the features behind each alert. The full replay takes about 20 minutes and ends at the same 45.4 %
+as the offline evaluation. The demo API serves the XGBoost trained on Monday to Wednesday: the
+default one was trained on the early part of Thursday and Friday, and the replay refuses to run with
+models that may have seen its test data.
 
 To watch only Friday afternoon (PortScan and DDoS):
 
@@ -227,14 +246,18 @@ terminals: `NIDS_CLASSIFIER=xgb_unseen uv run uvicorn nids.serving.api:create_ap
   the autoencoder catches. And the models do not transfer to another network without retraining.
 - The anomaly threshold is chosen without examples of the attacks, and some families are tiny
   (36 infiltration flows, 11 Heartbleed).
-- The API has no authentication or rate limit, and the demo replays flows extracted after the
-  capture, so alert latency was not measured.
+- The explanations describe what the model used, not the attack: a plausible explanation does not
+  make an alert right, and one built on the TCP window does not make it wrong.
+- Authentication and rate limiting are off by default, and the rate limit lives in the memory of a
+  single process. The demo replays flows extracted after the capture, so alert latency was not
+  measured.
 
 ## Documentation (in Portuguese)
 
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): architecture, protocols and roadmap.
 - [docs/adr/](docs/adr/): the decisions, one per record.
-- [notebooks/](notebooks/): exploratory analysis, supervised models and anomaly detection.
+- [notebooks/](notebooks/): exploratory analysis, supervised models, anomaly detection, the
+  corrected dataset, another network and the alert explanations.
 
 ## Repository layout
 
