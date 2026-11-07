@@ -28,7 +28,11 @@ class Autoencoder(MLPRegressor):
 
     def score_samples(self, X) -> np.ndarray:
         """Erro quadrático médio com o sinal trocado, como no IsolationForest."""
-        return -((self.predict(X) - X) ** 2).mean(axis=1)
+        return -self.feature_errors(X).mean(axis=1)
+
+    def feature_errors(self, X) -> np.ndarray:
+        """Erro quadrático de reconstrução de cada atributo: o que mais foge do normal."""
+        return np.asarray((self.predict(X) - X) ** 2)
 
 
 def train_detector(experiment: ExperimentConfig, X: pd.DataFrame, y: pd.Series) -> Model:

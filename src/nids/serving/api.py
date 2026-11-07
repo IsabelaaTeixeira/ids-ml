@@ -55,11 +55,20 @@ Flow = create_model(
 )
 
 
+class Contribution(BaseModel):
+    """Um atributo e o quanto pesou no alerta, na escala do modelo que o disparou."""
+
+    feature: str
+    weight: float
+
+
 class Verdict(BaseModel):
     verdict: Literal["attack", "suspicious", "benign"]
     family: str | None
     attack_probability: float
     anomaly_score: float
+    # Os atributos que mais pesaram, do maior para o menor; vazio nos fluxos normais
+    explanation: list[Contribution] = []
 
 
 class Prediction(BaseModel):
@@ -135,10 +144,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
 
     @app.post("/predict", dependencies=protected)
-    def predict(request: PredictRequest) -> Prediction:
+    def predict(request: PredictRequest, explain: bool = True) -> Prediction:
+        """Com `explain=false`, os alertas vêm sem explicação: a resposta fica até 20 vezes mais
+        rápida num lote cheio de ataques (ADR 0013)."""
         with latency.time():
             frame = pd.DataFrame([flow.model_dump() for flow in request.flows])
-            results = predictor.predict(frame)
+            results = predictor.predict(frame, explain=explain)
         for result in results:
             verdicts.labels(result["verdict"]).inc()
         return Prediction(models=models, results=results)

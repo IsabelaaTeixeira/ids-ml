@@ -158,6 +158,7 @@ def dashboard() -> None:
                 + alerts["destination_port"].astype(int).astype(str),
                 "Veredito": alerts["verdict"].map(VERDICT_NAMES),
                 "Família prevista": alerts["predicted_family"].fillna("—"),
+                "Por quê": alerts["explanation"].fillna("").replace("", "—"),
                 "Família verdadeira": alerts["family"],
                 "Resultado": alerts["correct"].map({True: "✓ acerto", False: "✗ alarme falso"}),
             }

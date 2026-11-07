@@ -30,7 +30,8 @@ log = logging.getLogger(__name__)
 TABLE = """
 CREATE TABLE verdicts (
     timestamp TEXT, source_ip TEXT, destination_ip TEXT, destination_port INTEGER,
-    family TEXT, verdict TEXT, predicted_family TEXT, attack_probability REAL, anomaly_score REAL
+    family TEXT, verdict TEXT, predicted_family TEXT, attack_probability REAL, anomaly_score REAL,
+    explanation TEXT
 )
 """
 
@@ -70,6 +71,11 @@ def replay(
                 response.raise_for_status()
                 results = pd.DataFrame(response.json()["results"])
                 results = results.rename(columns={"family": "predicted_family"})
+                # Só os nomes, do que mais pesou para o que menos: o peso de cada modelo tem a
+                # escala dele, e o painel mostra o porquê, não a conta
+                results["explanation"] = [
+                    ", ".join(c["feature"] for c in why) for why in results["explanation"]
+                ]
                 rows = batch[KEPT].reset_index(drop=True).join(results)
                 rows.to_sql("verdicts", conn, if_exists="append", index=False)
                 conn.commit()
